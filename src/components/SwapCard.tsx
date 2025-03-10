@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ArrowDownUp, Settings, Loader2 } from "lucide-react";
 import { NETWORKS, SLIPPAGE_OPTIONS } from "@/lib/constants";
@@ -26,23 +25,22 @@ const SwapCard = () => {
   const [availableTokens, setAvailableTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Fetch tokens for the selected network
   useEffect(() => {
     const loadTokens = async () => {
       setIsLoading(true);
       try {
         const tokens = await fetchSymbiosisTokens(selectedNetwork.id);
-        setAvailableTokens(tokens);
-        console.log(`Loaded ${tokens.length} tokens for ${selectedNetwork.name}`);
+        const networkSpecificTokens = tokens.filter(token => token.network === selectedNetwork.id);
+        setAvailableTokens(networkSpecificTokens.length > 0 ? networkSpecificTokens : NETWORK_TOKENS[selectedNetwork.id] || []);
         
-        // Reset selected tokens when network changes
         setFromToken(null);
         setToToken(null);
         setFromAmount("");
         setToAmount("");
       } catch (error) {
         console.error("Error loading tokens:", error);
-        toast.error("Failed to load tokens. Please try again.");
+        setAvailableTokens(NETWORK_TOKENS[selectedNetwork.id] || []);
+        toast.error("Failed to load tokens. Using fallback data.");
       } finally {
         setIsLoading(false);
       }
@@ -51,7 +49,6 @@ const SwapCard = () => {
     loadTokens();
   }, [selectedNetwork]);
   
-  // Handle swapping the tokens
   const handleSwapTokens = () => {
     if (!fromToken || !toToken) return;
     
@@ -64,12 +61,10 @@ const SwapCard = () => {
     setToAmount(tempAmount);
   };
   
-  // Handle network change
   const handleNetworkChange = (network: typeof NETWORKS[0]) => {
     setSelectedNetwork(network);
   };
   
-  // Update the to amount when from amount or tokens change
   useEffect(() => {
     const updateToAmount = () => {
       console.log("Updating to amount with:", { 
@@ -91,27 +86,22 @@ const SwapCard = () => {
     updateToAmount();
   }, [fromToken, toToken, fromAmount]);
   
-  // Handle from amount change
   const handleFromAmountChange = (value: string) => {
-    // Only allow numbers and a single decimal point
     if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
       setFromAmount(value);
     }
   };
   
-  // Handle from token selection
   const handleFromTokenSelect = (token: Token) => {
     console.log("From token selected:", token.symbol);
     setFromToken(token);
   };
   
-  // Handle to token selection
   const handleToTokenSelect = (token: Token) => {
     console.log("To token selected:", token.symbol);
     setToToken(token);
   };
   
-  // Handle connect wallet
   const handleConnectWallet = async () => {
     try {
       const connected = await connectWallet();
@@ -127,11 +117,8 @@ const SwapCard = () => {
     }
   };
   
-  // Handle swap
   const handleSwap = () => {
-    // This would be replaced with actual swap logic
     toast.success(`Swapped ${fromAmount} ${fromToken?.symbol} for ${toAmount} ${toToken?.symbol}`);
-    // Reset the form
     setFromAmount("");
     setToAmount("");
   };
@@ -183,7 +170,6 @@ const SwapCard = () => {
         </div>
       ) : (
         <>
-          {/* From token input */}
           <div className="bg-black/20 rounded-xl p-4 mb-2">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-white/70">You give</span>
@@ -213,7 +199,6 @@ const SwapCard = () => {
             </div>
           </div>
           
-          {/* Swap direction button */}
           <div className="flex justify-center -my-4 z-10 relative">
             <button 
               className="swap-connector"
@@ -224,7 +209,6 @@ const SwapCard = () => {
             </button>
           </div>
           
-          {/* To token input */}
           <div className="bg-black/20 rounded-xl p-4 mb-6">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-white/70">You get</span>
@@ -251,7 +235,6 @@ const SwapCard = () => {
             </div>
           </div>
           
-          {/* Swap button */}
           <SwapButton 
             connected={walletConnected}
             onConnect={handleConnectWallet}

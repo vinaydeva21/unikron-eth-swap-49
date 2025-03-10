@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ChevronDown, Search, Loader2 } from "lucide-react";
 import { Token } from "@/lib/types";
@@ -33,7 +32,7 @@ const TokenSelector = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="token-selector" asChild>
-        <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/20 border border-unikron-blue/10 outline-none">
+        <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/20 border border-unikron-blue/10 outline-none min-w-[120px] whitespace-nowrap">
           {selectedToken ? (
             <>
               <img 
@@ -41,21 +40,18 @@ const TokenSelector = ({
                 alt={selectedToken.symbol} 
                 className="h-6 w-6 rounded-full" 
                 onError={(e) => {
-                  // If image fails to load, use a fallback
                   (e.target as HTMLImageElement).src = "/tokens/unknown.svg";
                 }}
               />
-              <span className="text-white font-medium">{selectedToken.symbol}</span>
-              <ChevronDown className="h-4 w-4 text-white/70" />
+              <span className="text-white font-medium truncate">{selectedToken.symbol}</span>
+              <ChevronDown className="h-4 w-4 text-white/70 flex-shrink-0" />
             </>
           ) : (
-            <>
-              <span className="text-white font-medium">Select Token</span>
-              <ChevronDown className="h-4 w-4 text-white/70" />
-            </>
+            <span className="text-white font-medium truncate">Select Token</span>
           )}
         </button>
       </DropdownMenuTrigger>
+      
       <DropdownMenuContent className="bg-unikron-navy-light border border-unikron-blue/20 backdrop-blur-xl shadow-xl animate-fadeIn w-[300px] max-h-[450px] p-0 overflow-hidden">
         <div className="p-3 border-b border-unikron-blue/10">
           <div className="relative">
