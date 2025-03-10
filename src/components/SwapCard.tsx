@@ -71,8 +71,24 @@ const SwapCard = () => {
   
   // Update the to amount when from amount or tokens change
   useEffect(() => {
-    const calculatedAmount = calculateSwapAmount(fromToken, toToken, fromAmount);
-    setToAmount(calculatedAmount);
+    const updateToAmount = () => {
+      console.log("Updating to amount with:", { 
+        fromToken: fromToken?.symbol, 
+        toToken: toToken?.symbol, 
+        fromAmount 
+      });
+      
+      if (!fromToken || !toToken || !fromAmount) {
+        setToAmount("");
+        return;
+      }
+      
+      const calculatedAmount = calculateSwapAmount(fromToken, toToken, fromAmount);
+      console.log("Calculated amount:", calculatedAmount);
+      setToAmount(calculatedAmount);
+    };
+    
+    updateToAmount();
   }, [fromToken, toToken, fromAmount]);
   
   // Handle from amount change
@@ -81,6 +97,18 @@ const SwapCard = () => {
     if (/^[0-9]*\.?[0-9]*$/.test(value) || value === "") {
       setFromAmount(value);
     }
+  };
+  
+  // Handle from token selection
+  const handleFromTokenSelect = (token: Token) => {
+    console.log("From token selected:", token.symbol);
+    setFromToken(token);
+  };
+  
+  // Handle to token selection
+  const handleToTokenSelect = (token: Token) => {
+    console.log("To token selected:", token.symbol);
+    setToToken(token);
   };
   
   // Handle connect wallet
@@ -173,7 +201,7 @@ const SwapCard = () => {
               />
               <TokenSelector
                 selectedToken={fromToken}
-                onSelectToken={setFromToken}
+                onSelectToken={handleFromTokenSelect}
                 label="From"
                 availableTokens={availableTokens}
               />
@@ -211,7 +239,7 @@ const SwapCard = () => {
               />
               <TokenSelector
                 selectedToken={toToken}
-                onSelectToken={setToToken}
+                onSelectToken={handleToTokenSelect}
                 label="To"
                 availableTokens={availableTokens}
               />
