@@ -1,7 +1,8 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { NETWORKS, Network } from "@/lib/constants";
+import { NETWORKS } from "@/lib/constants";
+import { Network } from "@/lib/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
