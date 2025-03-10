@@ -1,37 +1,28 @@
 
-export type Network = {
-  id: string;
-  name: string;
-  icon: string;
-};
-
-export type Token = {
-  id: string;
-  symbol: string;
-  name: string;
-  icon: string;
-  decimals: number;
-  network: string;
-};
+import { Network, Token } from './types';
 
 export const NETWORKS: Network[] = [
   {
     id: "ethereum",
     name: "Ethereum",
-    icon: "/logos/ethereum.svg"
+    icon: "/logos/ethereum.svg",
+    chainId: 1 // Ethereum Mainnet
   },
   {
     id: "cardano",
     name: "Cardano",
-    icon: "/logos/cardano.svg"
+    icon: "/logos/cardano.svg",
+    chainId: 2000 // Using a placeholder since Cardano doesn't have an EVM chainId
   },
   {
     id: "arbitrum",
     name: "Arbitrum",
-    icon: "/logos/arbitrum.svg"
+    icon: "/logos/arbitrum.svg",
+    chainId: 42161 // Arbitrum One
   }
 ];
 
+// Default fallback tokens (will be replaced by API data)
 export const TOKENS: Token[] = [
   {
     id: "eth",

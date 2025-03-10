@@ -1,7 +1,8 @@
 
-import { Wallet } from "lucide-react";
+import { Wallet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Token } from "@/lib/constants";
+import { Token } from "@/lib/types";
+import { useState } from "react";
 
 interface SwapButtonProps {
   connected: boolean;
@@ -20,16 +21,47 @@ const SwapButton = ({
   toToken,
   fromAmount,
 }: SwapButtonProps) => {
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isSwapping, setIsSwapping] = useState(false);
+  
   const isDisabled = !fromToken || !toToken || !fromAmount || fromAmount === '0';
+  
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    try {
+      await onConnect();
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+  
+  const handleSwap = async () => {
+    setIsSwapping(true);
+    try {
+      await onSwap();
+    } finally {
+      setIsSwapping(false);
+    }
+  };
   
   if (!connected) {
     return (
       <button 
-        className="connect-button w-full"
-        onClick={onConnect}
+        className="connect-button w-full flex items-center justify-center"
+        onClick={handleConnect}
+        disabled={isConnecting}
       >
-        <Wallet className="h-5 w-5 mr-2" />
-        Connect wallet
+        {isConnecting ? (
+          <>
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            Connecting...
+          </>
+        ) : (
+          <>
+            <Wallet className="h-5 w-5 mr-2" />
+            Connect wallet
+          </>
+        )}
       </button>
     );
   }
@@ -44,11 +76,18 @@ const SwapButton = ({
   
   return (
     <button 
-      disabled={isDisabled}
-      className={`connect-button w-full ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-      onClick={onSwap}
+      disabled={isDisabled || isSwapping}
+      className={`connect-button w-full flex items-center justify-center ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      onClick={handleSwap}
     >
-      {buttonText}
+      {isSwapping ? (
+        <>
+          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+          Swapping...
+        </>
+      ) : (
+        buttonText
+      )}
     </button>
   );
 };

@@ -4,9 +4,8 @@ import Navbar from "@/components/Navbar";
 import SwapCard from "@/components/SwapCard";
 
 const Index = () => {
-  // Create mock network token SVGs for the app
+  // Initialize the swap application
   useEffect(() => {
-    // This would be replaced with real token icons in a production app
     console.log("Initializing swap application...");
   }, []);
   
