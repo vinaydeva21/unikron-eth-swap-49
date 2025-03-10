@@ -1,12 +1,34 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useEffect } from "react";
+import Navbar from "@/components/Navbar";
+import SwapCard from "@/components/SwapCard";
 
 const Index = () => {
+  // Create mock network token SVGs for the app
+  useEffect(() => {
+    // This would be replaced with real token icons in a production app
+    console.log("Initializing swap application...");
+  }, []);
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-unikron-navy relative overflow-hidden">
+      {/* Radial gradient background */}
+      <div 
+        className="absolute inset-0 bg-gradient-radial from-unikron-navy-light/20 to-transparent"
+        style={{
+          background: "radial-gradient(circle at 50% 50%, rgba(26, 42, 105, 0.15) 0%, rgba(3, 14, 33, 0) 70%)"
+        }}
+      ></div>
+      
+      {/* Navbar */}
+      <Navbar />
+      
+      {/* Main content */}
+      <main className="pt-28 pb-12 px-4 sm:px-6 flex flex-col items-center justify-center relative z-10">
+        <div className="max-w-md w-full mx-auto">
+          <SwapCard />
+        </div>
+      </main>
     </div>
   );
 };
