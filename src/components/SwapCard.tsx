@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { fetchSymbiosisTokens, connectWallet, calculateSwapAmount } from "@/services/tokenService";
+import { executeContractSwap, isSwapAvailable } from "@/services/swapContractService";
+import { NETWORK_TOKENS } from "@/lib/constants";
 
 const SwapCard = () => {
   const [selectedNetwork, setSelectedNetwork] = useState(NETWORKS[0]);
@@ -24,6 +26,8 @@ const SwapCard = () => {
   const [walletConnected, setWalletConnected] = useState(false);
   const [availableTokens, setAvailableTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestnet, setIsTestnet] = useState(false);
+  const [isSwapping, setIsSwapping] = useState(false);
   
   useEffect(() => {
     const loadTokens = async () => {
@@ -117,10 +121,40 @@ const SwapCard = () => {
     }
   };
   
-  const handleSwap = () => {
-    toast.success(`Swapped ${fromAmount} ${fromToken?.symbol} for ${toAmount} ${toToken?.symbol}`);
-    setFromAmount("");
-    setToAmount("");
+  const handleSwap = async () => {
+    if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) {
+      toast.error("Please select tokens and enter a valid amount");
+      return;
+    }
+    
+    if (!isSwapAvailable(selectedNetwork.id)) {
+      toast.error(`Real-time swaps not supported on ${selectedNetwork.name} yet`);
+      toast.success(`Swapped ${fromAmount} ${fromToken.symbol} for ${toAmount} ${toToken.symbol} (simulated)`);
+      setFromAmount("");
+      setToAmount("");
+      return;
+    }
+    
+    setIsSwapping(true);
+    try {
+      const success = await executeContractSwap(
+        fromToken,
+        toToken,
+        fromAmount,
+        slippage,
+        isTestnet
+      );
+      
+      if (success) {
+        setFromAmount("");
+        setToAmount("");
+      }
+    } catch (error) {
+      console.error("Swap error:", error);
+      toast.error(`Swap failed: ${(error as Error).message || "Unknown error"}`);
+    } finally {
+      setIsSwapping(false);
+    }
   };
   
   return (
@@ -128,6 +162,16 @@ const SwapCard = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-medium text-white">Swap</h2>
         <div className="flex items-center gap-3">
+          <div className="flex items-center mr-2">
+            <label className="text-sm text-white/70 mr-2">Testnet</label>
+            <input
+              type="checkbox"
+              checked={isTestnet}
+              onChange={(e) => setIsTestnet(e.target.checked)}
+              className="h-4 w-4 accent-unikron-blue"
+            />
+          </div>
+          
           <NetworkSelector 
             selectedNetwork={selectedNetwork}
             onSelectNetwork={handleNetworkChange}
@@ -242,8 +286,28 @@ const SwapCard = () => {
             fromToken={fromToken}
             toToken={toToken}
             fromAmount={fromAmount}
+            isSwapping={isSwapping}
           />
         </>
+      )}
+      
+      {fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0 && (
+        <div className="mt-4 bg-black/10 rounded-lg p-3 text-sm text-white/70">
+          <div className="flex justify-between mb-1">
+            <span>Rate</span>
+            <span>1 {fromToken.symbol} ≈ {(toToken.price && fromToken.price) 
+              ? (fromToken.price / toToken.price).toFixed(6) 
+              : '0'} {toToken.symbol}</span>
+          </div>
+          <div className="flex justify-between mb-1">
+            <span>Network</span>
+            <span className="text-unikron-blue">{selectedNetwork.name} {isTestnet ? '(Testnet)' : '(Mainnet)'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Slippage</span>
+            <span>{slippage}%</span>
+          </div>
+        </div>
       )}
     </div>
   );

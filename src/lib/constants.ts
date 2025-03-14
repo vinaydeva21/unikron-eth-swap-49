@@ -31,7 +31,9 @@ export const NETWORK_TOKENS: { [key: string]: Token[] } = {
       name: "Ethereum",
       icon: "/tokens/eth.svg",
       decimals: 18,
-      network: "ethereum"
+      network: "ethereum",
+      address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH address
+      price: 3500
     },
     {
       id: "usdt",
@@ -39,7 +41,9 @@ export const NETWORK_TOKENS: { [key: string]: Token[] } = {
       name: "Tether USD",
       icon: "/tokens/usdt.svg",
       decimals: 6,
-      network: "ethereum"
+      network: "ethereum",
+      address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      price: 1
     }
   ],
   cardano: [
@@ -49,7 +53,8 @@ export const NETWORK_TOKENS: { [key: string]: Token[] } = {
       name: "Cardano",
       icon: "/tokens/ada.svg",
       decimals: 6,
-      network: "cardano"
+      network: "cardano",
+      price: 0.5
     }
   ],
   arbitrum: [
@@ -59,7 +64,9 @@ export const NETWORK_TOKENS: { [key: string]: Token[] } = {
       name: "Arbitrum",
       icon: "/tokens/arb.svg",
       decimals: 18,
-      network: "arbitrum"
+      network: "arbitrum",
+      address: "0x912CE59144191C1204E64559FE8253a0e49E6548",
+      price: 1.2
     },
     {
       id: "eth-arb",
@@ -67,7 +74,9 @@ export const NETWORK_TOKENS: { [key: string]: Token[] } = {
       name: "Ethereum on Arbitrum",
       icon: "/tokens/eth.svg",
       decimals: 18,
-      network: "arbitrum"
+      network: "arbitrum",
+      address: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH on Arbitrum
+      price: 3500
     }
   ]
 };

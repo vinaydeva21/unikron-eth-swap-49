@@ -11,6 +11,7 @@ interface SwapButtonProps {
   fromToken: Token | null;
   toToken: Token | null;
   fromAmount: string;
+  isSwapping?: boolean;
 }
 
 const SwapButton = ({
@@ -20,11 +21,11 @@ const SwapButton = ({
   fromToken,
   toToken,
   fromAmount,
+  isSwapping = false,
 }: SwapButtonProps) => {
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isSwapping, setIsSwapping] = useState(false);
   
-  const isDisabled = !fromToken || !toToken || !fromAmount || fromAmount === '0';
+  const isDisabled = !fromToken || !toToken || !fromAmount || fromAmount === '0' || isSwapping;
   
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -32,15 +33,6 @@ const SwapButton = ({
       await onConnect();
     } finally {
       setIsConnecting(false);
-    }
-  };
-  
-  const handleSwap = async () => {
-    setIsSwapping(true);
-    try {
-      await onSwap();
-    } finally {
-      setIsSwapping(false);
     }
   };
   
@@ -76,9 +68,9 @@ const SwapButton = ({
   
   return (
     <button 
-      disabled={isDisabled || isSwapping}
+      disabled={isDisabled}
       className={`connect-button w-full flex items-center justify-center ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-      onClick={handleSwap}
+      onClick={onSwap}
     >
       {isSwapping ? (
         <>
