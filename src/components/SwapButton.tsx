@@ -1,5 +1,5 @@
 
-import { Wallet, Loader2 } from "lucide-react";
+import { Wallet, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Token } from "@/lib/types";
 import { useState } from "react";
@@ -12,6 +12,7 @@ interface SwapButtonProps {
   toToken: Token | null;
   fromAmount: string;
   isSwapping?: boolean;
+  txStatus?: 'pending' | 'success' | 'error' | null;
 }
 
 const SwapButton = ({
@@ -22,6 +23,7 @@ const SwapButton = ({
   toToken,
   fromAmount,
   isSwapping = false,
+  txStatus = null,
 }: SwapButtonProps) => {
   const [isConnecting, setIsConnecting] = useState(false);
   
@@ -64,18 +66,25 @@ const SwapButton = ({
     buttonText = 'Select tokens';
   } else if (!fromAmount || fromAmount === '0') {
     buttonText = 'Enter an amount';
+  } else if (txStatus === 'success') {
+    buttonText = 'Swap Successful';
   }
   
   return (
     <button 
-      disabled={isDisabled}
-      className={`connect-button w-full flex items-center justify-center ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      disabled={isDisabled || txStatus === 'success'}
+      className={`connect-button w-full flex items-center justify-center ${isDisabled || txStatus === 'success' ? 'opacity-50 cursor-not-allowed' : ''} ${txStatus === 'success' ? 'bg-green-500' : ''}`}
       onClick={onSwap}
     >
       {isSwapping ? (
         <>
           <Loader2 className="h-5 w-5 mr-2 animate-spin" />
           Swapping...
+        </>
+      ) : txStatus === 'success' ? (
+        <>
+          <Check className="h-5 w-5 mr-2" />
+          {buttonText}
         </>
       ) : (
         buttonText

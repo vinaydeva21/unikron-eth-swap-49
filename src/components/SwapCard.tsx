@@ -13,8 +13,14 @@ import {
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { fetchSymbiosisTokens, connectWallet, calculateSwapAmount } from "@/services/tokenService";
-import { executeContractSwap, isSwapAvailable } from "@/services/swapContractService";
+import { 
+  executeContractSwap, 
+  isSwapAvailable, 
+  getCurrentTransactionStatus,
+  resetTransactionState 
+} from "@/services/swapContractService";
 import { NETWORK_TOKENS } from "@/lib/constants";
+import { Progress } from "@/components/ui/progress";
 
 const SwapCard = () => {
   const [selectedNetwork, setSelectedNetwork] = useState(NETWORKS[0]);
@@ -28,6 +34,8 @@ const SwapCard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTestnet, setIsTestnet] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
+  const [txStatus, setTxStatus] = useState<'pending' | 'success' | 'error' | null>(null);
+  const [swapProgress, setSwapProgress] = useState(0);
   
   useEffect(() => {
     const loadTokens = async () => {
@@ -53,6 +61,61 @@ const SwapCard = () => {
     loadTokens();
   }, [selectedNetwork]);
   
+  useEffect(() => {
+    const checkWalletConnection = async () => {
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        setWalletConnected(true);
+      }
+    };
+    
+    checkWalletConnection();
+  }, []);
+  
+  useEffect(() => {
+    let progressInterval: number | undefined;
+    
+    if (isSwapping) {
+      setSwapProgress(0);
+      progressInterval = window.setInterval(() => {
+        setSwapProgress((prev) => {
+          return prev < 90 ? prev + 10 : prev;
+        });
+      }, 1000);
+    } else if (txStatus === 'success') {
+      setSwapProgress(100);
+    } else if (txStatus === null) {
+      setSwapProgress(0);
+    }
+    
+    return () => {
+      if (progressInterval) clearInterval(progressInterval);
+    };
+  }, [isSwapping, txStatus]);
+  
+  useEffect(() => {
+    if (isSwapping) {
+      const checkTxStatus = setInterval(() => {
+        const status = getCurrentTransactionStatus();
+        if (status && status !== 'pending') {
+          setTxStatus(status);
+          setIsSwapping(false);
+          
+          if (status === 'success') {
+            setTimeout(() => {
+              resetTransactionState();
+              setTxStatus(null);
+              setSwapProgress(0);
+              setFromAmount("");
+              setToAmount("");
+            }, 5000);
+          }
+        }
+      }, 1000);
+      
+      return () => clearInterval(checkTxStatus);
+    }
+  }, [isSwapping]);
+  
   const handleSwapTokens = () => {
     if (!fromToken || !toToken) return;
     
@@ -67,6 +130,8 @@ const SwapCard = () => {
   
   const handleNetworkChange = (network: typeof NETWORKS[0]) => {
     setSelectedNetwork(network);
+    setTxStatus(null);
+    resetTransactionState();
   };
   
   useEffect(() => {
@@ -127,6 +192,9 @@ const SwapCard = () => {
       return;
     }
     
+    setTxStatus(null);
+    resetTransactionState();
+    
     if (!isSwapAvailable(selectedNetwork.id)) {
       toast.error(`Real-time swaps not supported on ${selectedNetwork.name} yet`);
       toast.success(`Swapped ${fromAmount} ${fromToken.symbol} for ${toAmount} ${toToken.symbol} (simulated)`);
@@ -136,6 +204,7 @@ const SwapCard = () => {
     }
     
     setIsSwapping(true);
+    
     try {
       const success = await executeContractSwap(
         fromToken,
@@ -145,15 +214,11 @@ const SwapCard = () => {
         isTestnet
       );
       
-      if (success) {
-        setFromAmount("");
-        setToAmount("");
-      }
     } catch (error) {
       console.error("Swap error:", error);
       toast.error(`Swap failed: ${(error as Error).message || "Unknown error"}`);
-    } finally {
       setIsSwapping(false);
+      setTxStatus('error');
     }
   };
   
@@ -228,6 +293,7 @@ const SwapCard = () => {
                 onChange={(e) => handleFromAmountChange(e.target.value)}
                 placeholder="0"
                 className="swap-input text-white"
+                disabled={isSwapping || txStatus === 'success'}
               />
               <TokenSelector
                 selectedToken={fromToken}
@@ -247,7 +313,7 @@ const SwapCard = () => {
             <button 
               className="swap-connector"
               onClick={handleSwapTokens}
-              disabled={!fromToken || !toToken}
+              disabled={!fromToken || !toToken || isSwapping || txStatus === 'success'}
             >
               <ArrowDownUp className="h-4 w-4" />
             </button>
@@ -279,6 +345,31 @@ const SwapCard = () => {
             </div>
           </div>
           
+          {(isSwapping || txStatus === 'success' || txStatus === 'error') && (
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs text-white/70">
+                  {txStatus === 'success' 
+                    ? 'Swap completed' 
+                    : txStatus === 'error' 
+                      ? 'Swap failed' 
+                      : 'Processing swap...'}
+                </span>
+                <span className="text-xs text-white/70">{swapProgress}%</span>
+              </div>
+              <Progress 
+                value={swapProgress} 
+                className={`h-2 ${
+                  txStatus === 'success' 
+                    ? 'bg-green-500/20' 
+                    : txStatus === 'error' 
+                      ? 'bg-red-500/20' 
+                      : 'bg-unikron-blue/20'
+                }`}
+              />
+            </div>
+          )}
+          
           <SwapButton 
             connected={walletConnected}
             onConnect={handleConnectWallet}
@@ -287,6 +378,7 @@ const SwapCard = () => {
             toToken={toToken}
             fromAmount={fromAmount}
             isSwapping={isSwapping}
+            txStatus={txStatus}
           />
         </>
       )}

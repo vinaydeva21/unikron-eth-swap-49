@@ -6,7 +6,8 @@ import { Token } from '@/lib/types';
 // ABI for our swap contract - simplified version
 const SWAP_CONTRACT_ABI = [
   "function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _minAmountOut, uint256 _price) external returns (uint256)",
-  "function feePercent() view returns (uint256)"
+  "function feePercent() view returns (uint256)",
+  "event SwapCompleted(address indexed user, address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut)"
 ];
 
 // Contract addresses for different networks
@@ -21,6 +22,17 @@ const TESTNET_ADDRESSES: { [key: string]: string } = {
   ethereum: "0x0000000000000000000000000000000000000000", // Replace with testnet address
   arbitrum: "0x0000000000000000000000000000000000000000", // Replace with testnet address
 };
+
+// Track active transactions
+interface TransactionState {
+  hash: string;
+  status: 'pending' | 'success' | 'error';
+  fromToken: Token;
+  toToken: Token;
+  amount: string;
+}
+
+let currentTransaction: TransactionState | null = null;
 
 /**
  * Execute a token swap through the smart contract
@@ -105,8 +117,15 @@ export const executeContractSwap = async (
     if (currentAllowance.lt(amountInWei)) {
       const approveTx = await tokenContract.approve(contractAddress, amountInWei);
       toast.info("Approving token transfer...");
-      await approveTx.wait();
-      toast.success("Token transfer approved");
+      
+      // Wait for approval transaction to be mined
+      const approveReceipt = await approveTx.wait();
+      if (approveReceipt.status === 1) {
+        toast.success("Token transfer approved");
+      } else {
+        toast.error("Token approval failed");
+        return false;
+      }
     }
     
     // Execute the swap
@@ -119,16 +138,94 @@ export const executeContractSwap = async (
       priceRatio
     );
     
-    // Wait for transaction to be mined
-    await tx.wait();
+    // Set current transaction state
+    currentTransaction = {
+      hash: tx.hash,
+      status: 'pending',
+      fromToken,
+      toToken,
+      amount
+    };
     
-    toast.success(`Successfully swapped ${amount} ${fromToken.symbol} for ${toToken.symbol}`);
-    return true;
+    // Show transaction hash as a toast
+    toast.info(
+      <div>
+        <p>Transaction sent!</p>
+        <a 
+          href={`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${tx.hash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 underline"
+        >
+          View on explorer
+        </a>
+      </div>
+    );
+    
+    // Wait for transaction to be mined
+    const receipt = await tx.wait();
+    
+    if (receipt.status === 1) {
+      // Transaction successful
+      currentTransaction = { ...currentTransaction, status: 'success' };
+      
+      // Find the SwapCompleted event
+      const swapEvent = receipt.events?.find(
+        (event: any) => event.event === 'SwapCompleted'
+      );
+      
+      let outputAmount = '0';
+      if (swapEvent) {
+        outputAmount = ethers.utils.formatUnits(
+          swapEvent.args.amountOut,
+          toToken.decimals
+        );
+      }
+      
+      toast.success(
+        <div>
+          <p>Successfully swapped {amount} {fromToken.symbol} for {outputAmount} {toToken.symbol}</p>
+          <a 
+            href={`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${receipt.transactionHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline"
+          >
+            View on explorer
+          </a>
+        </div>
+      );
+      return true;
+    } else {
+      // Transaction failed
+      currentTransaction = { ...currentTransaction, status: 'error' };
+      toast.error(`Swap transaction failed. Please check block explorer for details.`);
+      return false;
+    }
   } catch (error) {
     console.error("Error executing swap:", error);
     toast.error(`Swap failed: ${(error as Error).message || "Unknown error"}`);
+    
+    if (currentTransaction) {
+      currentTransaction = { ...currentTransaction, status: 'error' };
+    }
+    
     return false;
   }
+};
+
+/**
+ * Get the status of the current transaction
+ */
+export const getCurrentTransactionStatus = (): 'pending' | 'success' | 'error' | null => {
+  return currentTransaction?.status || null;
+};
+
+/**
+ * Reset the current transaction state
+ */
+export const resetTransactionState = (): void => {
+  currentTransaction = null;
 };
 
 /**
