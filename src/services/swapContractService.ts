@@ -147,20 +147,15 @@ export const executeContractSwap = async (
       amount
     };
     
-    // Show transaction hash as a toast
-    toast.info(
-      <div>
-        <p>Transaction sent!</p>
-        <a 
-          href={`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${tx.hash}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-500 underline"
-        >
-          View on explorer
-        </a>
-      </div>
-    );
+    // Show transaction hash as a toast - using HTML rather than JSX
+    toast.info({
+      title: "Transaction sent!",
+      description: `View on explorer: ${tx.hash.substring(0, 6)}...${tx.hash.substring(tx.hash.length - 4)}`,
+      action: {
+        label: "View",
+        onClick: () => window.open(`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${tx.hash}`, '_blank')
+      }
+    });
     
     // Wait for transaction to be mined
     const receipt = await tx.wait();
@@ -182,19 +177,15 @@ export const executeContractSwap = async (
         );
       }
       
-      toast.success(
-        <div>
-          <p>Successfully swapped {amount} {fromToken.symbol} for {outputAmount} {toToken.symbol}</p>
-          <a 
-            href={`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${receipt.transactionHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 underline"
-          >
-            View on explorer
-          </a>
-        </div>
-      );
+      // Using toast with HTML content instead of JSX
+      toast.success({
+        title: "Swap Successful!",
+        description: `Swapped ${amount} ${fromToken.symbol} for ${outputAmount} ${toToken.symbol}`,
+        action: {
+          label: "View",
+          onClick: () => window.open(`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${receipt.transactionHash}`, '_blank')
+        }
+      });
       return true;
     } else {
       // Transaction failed
