@@ -1,4 +1,3 @@
-
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
 import { Token } from '@/lib/types';
@@ -147,10 +146,8 @@ export const executeContractSwap = async (
       amount
     };
     
-    // Show transaction hash as a toast - using HTML rather than JSX
-    toast.info({
-      title: "Transaction sent!",
-      description: `View on explorer: ${tx.hash.substring(0, 6)}...${tx.hash.substring(tx.hash.length - 4)}`,
+    // Show transaction hash as a toast - use proper toast format
+    toast.info(`Transaction sent! View on explorer: ${tx.hash.substring(0, 6)}...${tx.hash.substring(tx.hash.length - 4)}`, {
       action: {
         label: "View",
         onClick: () => window.open(`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${tx.hash}`, '_blank')
@@ -177,10 +174,8 @@ export const executeContractSwap = async (
         );
       }
       
-      // Using toast with HTML content instead of JSX
-      toast.success({
-        title: "Swap Successful!",
-        description: `Swapped ${amount} ${fromToken.symbol} for ${outputAmount} ${toToken.symbol}`,
+      // Using proper toast format
+      toast.success(`Swapped ${amount} ${fromToken.symbol} for ${outputAmount} ${toToken.symbol}`, {
         action: {
           label: "View",
           onClick: () => window.open(`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${receipt.transactionHash}`, '_blank')

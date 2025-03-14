@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { ArrowDownUp, Settings, Loader2 } from "lucide-react";
 import { NETWORKS, SLIPPAGE_OPTIONS } from "@/lib/constants";
@@ -63,8 +64,15 @@ const SwapCard = () => {
   
   useEffect(() => {
     const checkWalletConnection = async () => {
-      if (window.ethereum && window.ethereum.selectedAddress) {
-        setWalletConnected(true);
+      if (window.ethereum) {
+        try {
+          // Use the proper method to check if wallet is connected
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          setWalletConnected(accounts && accounts.length > 0);
+        } catch (error) {
+          console.error("Error checking wallet connection:", error);
+          setWalletConnected(false);
+        }
       }
     };
     
