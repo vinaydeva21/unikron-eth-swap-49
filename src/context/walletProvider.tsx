@@ -1,134 +1,114 @@
 
-import { useState, useEffect, ReactNode } from 'react';
-import WalletContext from './walletContext';
-import { WALLET_PROVIDERS, type WalletProvider as WalletProviderType } from '@/config/wallets';
+import { useState, useEffect } from 'react';
+import { WalletContext } from './walletContext';
+import { WalletProvider } from '@/config/wallets';
+import { ethers } from 'ethers';
 import { toast } from 'sonner';
 
-interface WalletProviderProps {
-  children: ReactNode;
-}
-
-export const WalletContextProvider = ({ children }: WalletProviderProps) => {
+export const WalletContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState<WalletProviderType | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<WalletProvider | null>(null);
+  const [address, setAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if wallet was previously connected
-    const checkPreviousConnection = async () => {
-      const savedWalletId = localStorage.getItem('selectedWallet');
-      if (savedWalletId) {
-        const wallet = WALLET_PROVIDERS.find(w => w.id === savedWalletId);
-        if (wallet) {
-          try {
-            const connected = await connectWallet(wallet);
-            if (!connected) {
-              localStorage.removeItem('selectedWallet');
-            }
-          } catch (error) {
-            console.error("Error reconnecting wallet:", error);
-            localStorage.removeItem('selectedWallet');
-          }
-        }
+    // Check if we already have a wallet connection from localStorage
+    const savedWallet = localStorage.getItem('selectedWallet');
+    if (savedWallet) {
+      const wallet = JSON.parse(savedWallet);
+      reconnectWallet(wallet);
+    }
+    
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', () => window.location.reload());
+    }
+    
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
-    
-    checkPreviousConnection();
   }, []);
-
-  const connectWallet = async (wallet: WalletProviderType): Promise<boolean> => {
+  
+  const reconnectWallet = async (wallet: WalletProvider) => {
     try {
-      if (wallet.isRainbowKit) {
-        // RainbowKit will handle connection on its own UI
-        return true;
-      }
-      
-      let address = null;
-      
-      switch (wallet.id) {
-        case 'metamask':
-          if (window.ethereum) {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (accounts && accounts.length > 0) {
-              setIsConnected(true);
-              setSelectedWallet(wallet);
-              setWalletAddress(accounts[0]);
-              address = accounts[0];
-              localStorage.setItem('selectedWallet', wallet.id);
-              toast.success(`Connected to ${wallet.name}`);
-              return true;
-            }
-          } else {
-            window.open('https://metamask.io/download/', '_blank');
-            toast.info(`Please install ${wallet.name} to continue`);
-          }
-          break;
-          
-        case 'nami':
-          if (window.cardano?.nami) {
-            const api = await window.cardano.nami.enable();
-            if (api) {
-              setIsConnected(true);
-              setSelectedWallet(wallet);
-              // Cardano wallets don't expose address directly, we'd need to use API
-              localStorage.setItem('selectedWallet', wallet.id);
-              toast.success(`Connected to ${wallet.name}`);
-              return true;
-            }
-          } else {
-            window.open('https://namiwallet.io/', '_blank');
-            toast.info(`Please install ${wallet.name} to continue`);
-          }
-          break;
-          
-        case 'yoroi':
-          if (window.cardano?.yoroi) {
-            const api = await window.cardano.yoroi.enable();
-            if (api) {
-              setIsConnected(true);
-              setSelectedWallet(wallet);
-              localStorage.setItem('selectedWallet', wallet.id);
-              toast.success(`Connected to ${wallet.name}`);
-              return true;
-            }
-          } else {
-            window.open('https://yoroi-wallet.com/', '_blank');
-            toast.info(`Please install ${wallet.name} to continue`);
-          }
-          break;
-          
-        case 'walletconnect':
+      // Attempt to get accounts to check if we're already connected
+      if (window.ethereum) {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          setAddress(accounts[0]);
           setIsConnected(true);
           setSelectedWallet(wallet);
-          localStorage.setItem('selectedWallet', wallet.id);
-          toast.success(`Connected to ${wallet.name}`);
-          return true;
+        }
       }
-      
-      return false;
     } catch (error) {
-      console.error('Error connecting wallet:', error);
-      toast.error(`Failed to connect to ${wallet.name}`);
-      return false;
+      console.error('Error reconnecting wallet:', error);
+    }
+  };
+  
+  const handleAccountsChanged = (accounts: string[]) => {
+    if (accounts.length === 0) {
+      // User disconnected their wallet
+      disconnect();
+    } else {
+      // Account changed, update the address
+      setAddress(accounts[0]);
     }
   };
 
-  const disconnect = () => {
+  const connect = async (wallet: WalletProvider) => {
+    try {
+      // For non-Rain bow Kit wallets
+      if (!wallet.isRainbowKit) {
+        if (!window.ethereum) {
+          toast.error(`${wallet.name} wallet not detected. Please install it first.`);
+          return;
+        }
+        
+        // Request account access
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
+        if (accounts.length > 0) {
+          setAddress(accounts[0]);
+          setIsConnected(true);
+          setSelectedWallet(wallet);
+          
+          // Save wallet selection to localStorage
+          localStorage.setItem('selectedWallet', JSON.stringify(wallet));
+          
+          toast.success(`Connected to ${wallet.name}`);
+        }
+      } else {
+        // RainbowKit wallets are handled by the RainbowKit UI
+        // But we still set the selectedWallet
+        setSelectedWallet(wallet);
+      }
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
+      toast.error(`Failed to connect: ${(error as Error).message}`);
+    }
+  };
+
+  const disconnect = async () => {
     setIsConnected(false);
     setSelectedWallet(null);
-    setWalletAddress(null);
+    setAddress(null);
+    
+    // Remove saved wallet from localStorage
     localStorage.removeItem('selectedWallet');
+    
     toast.info('Wallet disconnected');
   };
 
   return (
-    <WalletContext.Provider 
-      value={{ 
-        isConnected, 
-        selectedWallet, 
-        connect: connectWallet, 
-        disconnect,
-        walletAddress
+    <WalletContext.Provider
+      value={{
+        isConnected,
+        selectedWallet,
+        address,
+        connect,
+        disconnect
       }}
     >
       {children}

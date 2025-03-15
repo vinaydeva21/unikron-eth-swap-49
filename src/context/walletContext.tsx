@@ -1,24 +1,21 @@
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { WALLET_PROVIDERS, WalletProvider } from '@/config/wallets';
-import { toast } from 'sonner';
+import { createContext, useContext } from 'react';
+import { WalletProvider } from '@/config/wallets';
 
 interface WalletContextType {
   isConnected: boolean;
   selectedWallet: WalletProvider | null;
-  connect: (wallet: WalletProvider) => Promise<boolean>;
-  disconnect: () => void;
-  walletAddress: string | null;
+  address: string | null;
+  connect: (wallet: WalletProvider) => Promise<void>;
+  disconnect: () => Promise<void>;
 }
 
-const WalletContext = createContext<WalletContextType>({
+export const WalletContext = createContext<WalletContextType>({
   isConnected: false,
   selectedWallet: null,
-  connect: async () => false,
-  disconnect: () => {},
-  walletAddress: null,
+  address: null,
+  connect: async () => {},
+  disconnect: async () => {}
 });
 
 export const useWallet = () => useContext(WalletContext);
-
-export default WalletContext;

@@ -1,4 +1,3 @@
-
 import { WalletProvider } from './wallets';
 import { Network } from '@/lib/types';
 
@@ -7,6 +6,7 @@ export const APP_CONFIG = {
   name: "UNIKRON Swap",
   version: "1.0.0",
   apiUrl: "https://api-v2.symbiosis.finance/crosschain",
+  testnetApiUrl: "https://api.testnet.symbiosis.finance/crosschain",
   chainExplorerUrls: {
     ethereum: "https://etherscan.io",
     arbitrum: "https://arbiscan.io",
@@ -128,6 +128,47 @@ export const DEFAULT_TOKENS = {
       network: "arbitrum",
       address: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH on Arbitrum
       price: 3500
+    }
+  ]
+};
+
+// Symbiosis testnet tokens with valid addresses from their testnet documentation
+export const SYMBIOSIS_TESTNET_TOKENS = {
+  sepolia: [
+    {
+      id: "eth-sepolia",
+      symbol: "ETH",
+      name: "Sepolia ETH",
+      icon: "/tokens/eth.svg",
+      decimals: 18,
+      network: "sepolia",
+      address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
+      chainId: 11155111,
+      price: 3500
+    },
+    {
+      id: "usdt-sepolia",
+      symbol: "USDT",
+      name: "Test USDT",
+      icon: "/tokens/usdt.svg",
+      decimals: 6,
+      network: "sepolia",
+      address: "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0", // From Symbiosis docs
+      chainId: 11155111,
+      price: 1
+    }
+  ],
+  bsc_testnet: [
+    {
+      id: "bnb-testnet",
+      symbol: "BNB",
+      name: "BSC Testnet BNB",
+      icon: "/tokens/arb.svg", // Using arb as placeholder
+      decimals: 18,
+      network: "bsc_testnet",
+      address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native BNB
+      chainId: 97,
+      price: 580
     }
   ]
 };

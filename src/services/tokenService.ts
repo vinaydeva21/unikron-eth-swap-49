@@ -1,8 +1,9 @@
-
 import { Token, Network } from '@/lib/types';
 import { NETWORKS } from '@/lib/constants';
+import { DEFAULT_TOKENS, SYMBIOSIS_TESTNET_TOKENS } from '@/config';
 
 const SYMBIOSIS_API_BASE = 'https://api-v2.symbiosis.finance/crosschain';
+const SYMBIOSIS_TESTNET_API_BASE = 'https://api.testnet.symbiosis.finance/crosschain';
 
 interface SymbiosisToken {
   symbol: string;
@@ -21,22 +22,43 @@ interface SymbiosisPriceResponse {
 }
 
 /**
+ * Get the correct API base URL based on environment
+ */
+const getApiBaseUrl = (isTestnet: boolean): string => {
+  return isTestnet ? SYMBIOSIS_TESTNET_API_BASE : SYMBIOSIS_API_BASE;
+};
+
+/**
  * Fetches tokens for a specific network from Symbiosis API
  */
-export const fetchSymbiosisTokens = async (networkId: string): Promise<Token[]> => {
+export const fetchSymbiosisTokens = async (networkId: string, isTestnet: boolean = false): Promise<Token[]> => {
   try {
+    // For testnet, use predefined tokens
+    if (isTestnet) {
+      if (networkId === 'ethereum') {
+        return SYMBIOSIS_TESTNET_TOKENS.sepolia || [];
+      } else if (networkId === 'bsc') {
+        return SYMBIOSIS_TESTNET_TOKENS.bsc_testnet || [];
+      }
+      
+      // For other networks on testnet, return empty array
+      return [];
+    }
+    
     // Map network IDs to chain IDs
     const network = NETWORKS.find(net => net.id === networkId);
     if (!network?.chainId) {
       console.log(`No chainId mapping for network: ${networkId}`);
-      return [];
+      return DEFAULT_TOKENS[networkId] || [];
     }
     
     const chainId = network.chainId;
+    const baseUrl = getApiBaseUrl(isTestnet);
     
-    const response = await fetch(`${SYMBIOSIS_API_BASE}/v1/tokens?chainId=${chainId}`);
+    const response = await fetch(`${baseUrl}/v1/tokens?chainId=${chainId}`);
     if (!response.ok) {
-      throw new Error(`Failed to fetch tokens: ${response.statusText}`);
+      console.warn(`Failed to fetch tokens from Symbiosis API: ${response.statusText}`);
+      return DEFAULT_TOKENS[networkId] || [];
     }
     
     const data = await response.json();
@@ -49,7 +71,7 @@ export const fetchSymbiosisTokens = async (networkId: string): Promise<Token[]> 
     let pricesData = {};
     
     try {
-      pricesData = await fetchTokenPrices(tokenAddresses, chainId);
+      pricesData = await fetchTokenPrices(tokenAddresses, chainId, isTestnet);
       console.log('Successfully fetched token prices:', Object.keys(pricesData).length);
     } catch (error) {
       console.error('Error fetching token prices, using fallback prices:', error);
@@ -71,7 +93,7 @@ export const fetchSymbiosisTokens = async (networkId: string): Promise<Token[]> 
     }));
   } catch (error) {
     console.error('Error fetching Symbiosis tokens:', error);
-    return [];
+    return DEFAULT_TOKENS[networkId] || [];
   }
 };
 
@@ -113,14 +135,14 @@ const createFallbackPrices = (tokens: SymbiosisToken[]): SymbiosisPriceResponse 
 /**
  * Fetches prices for multiple tokens at once
  */
-const fetchTokenPrices = async (addresses: string[], chainId: number): Promise<SymbiosisPriceResponse> => {
+const fetchTokenPrices = async (addresses: string[], chainId: number, isTestnet: boolean): Promise<SymbiosisPriceResponse> => {
   try {
     if (!addresses.length) return {};
     
     // Take only first 100 addresses to avoid very long URL
     const addressesToFetch = addresses.slice(0, 100);
     const addressesQuery = addressesToFetch.join(',');
-    const url = `${SYMBIOSIS_API_BASE}/v1/prices?chainId=${chainId}&addresses=${addressesQuery}`;
+    const url = `${getApiBaseUrl(isTestnet)}/v1/prices?chainId=${chainId}&addresses=${addressesQuery}`;
     
     console.log(`Fetching prices for ${addressesToFetch.length} tokens from ${url}`);
     

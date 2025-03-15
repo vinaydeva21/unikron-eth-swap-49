@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { ArrowDownUp, Settings } from "lucide-react";
 import { NETWORKS, SLIPPAGE_OPTIONS } from "@/lib/constants";
@@ -11,11 +12,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { fetchSymbiosisTokens, calculateSwapAmount } from "@/services/tokenService";
-import { executeContractSwap, isSwapAvailable, getCurrentTransactionStatus, resetTransactionState } from "@/services/swapContractService";
+import { executeSymbiosisSwap, getSwapQuote, isTokenPairSupported } from "@/services/symbiosisService";
 import { toast } from "sonner";
 
 const Swap = () => {
-  const { isConnected, connect, selectedWallet } = useWallet();
+  const { isConnected, connect, selectedWallet, address } = useWallet();
   const { isTestnet } = useNetwork();
   
   // State for network and tokens
@@ -36,6 +37,7 @@ const Swap = () => {
   const [isSwapping, setIsSwapping] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [txStatus, setTxStatus] = useState<'pending' | 'success' | 'error' | null>(null);
+  const [isPairSupported, setIsPairSupported] = useState(true);
   
   // Load tokens when network changes or testnet toggle changes
   useEffect(() => {
@@ -66,49 +68,70 @@ const Swap = () => {
     loadTokens();
   }, [selectedNetwork, isTestnet]);
   
-  // Update calculated amount when parameters change
+  // Check token pair support when tokens change
   useEffect(() => {
-    if (swapState.fromToken && swapState.toToken && swapState.fromAmount) {
-      const calculatedAmount = calculateSwapAmount(
-        swapState.fromToken,
-        swapState.toToken,
-        swapState.fromAmount
-      );
-      setSwapState(prev => ({ ...prev, toAmount: calculatedAmount }));
-    }
-  }, [swapState.fromToken, swapState.toToken, swapState.fromAmount]);
-  
-  // Monitor transaction status
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const status = getCurrentTransactionStatus();
-      if (status !== txStatus) {
-        setTxStatus(status);
+    const checkPairSupport = async () => {
+      if (swapState.fromToken && swapState.toToken) {
+        const supported = await isTokenPairSupported(
+          swapState.fromToken,
+          swapState.toToken,
+          isTestnet
+        );
+        setIsPairSupported(supported);
         
-        if (status === 'success') {
-          setIsSwapping(false);
-          // Reset form after successful swap with a delay
-          setTimeout(() => {
-            setSwapState(prev => ({
-              ...prev,
-              fromAmount: '',
-              toAmount: '',
-            }));
-            resetTransactionState();
-            setTxStatus(null);
-          }, 5000);
-        } else if (status === 'error') {
-          setIsSwapping(false);
-          setTimeout(() => {
-            resetTransactionState();
-            setTxStatus(null);
-          }, 5000);
+        if (!supported) {
+          toast.warning(`This token pair is not supported for swapping via Symbiosis`);
         }
       }
-    }, 1000);
+    };
     
-    return () => clearInterval(interval);
-  }, [txStatus]);
+    checkPairSupport();
+  }, [swapState.fromToken, swapState.toToken, isTestnet]);
+  
+  // Get quote when parameters change
+  useEffect(() => {
+    const getQuote = async () => {
+      if (swapState.fromToken && swapState.toToken && swapState.fromAmount && address && parseFloat(swapState.fromAmount) > 0) {
+        try {
+          const quote = await getSwapQuote(
+            swapState.fromToken,
+            swapState.toToken,
+            swapState.fromAmount,
+            address,
+            isTestnet
+          );
+          
+          if (quote) {
+            // Format the output amount based on token decimals
+            const formattedAmount = ethers.utils.formatUnits(
+              quote.amountOut,
+              swapState.toToken.decimals
+            );
+            setSwapState(prev => ({ ...prev, toAmount: formattedAmount }));
+          }
+        } catch (error) {
+          console.error("Error getting swap quote:", error);
+          // Fallback to calculation if API quote fails
+          const calculatedAmount = calculateSwapAmount(
+            swapState.fromToken,
+            swapState.toToken,
+            swapState.fromAmount
+          );
+          setSwapState(prev => ({ ...prev, toAmount: calculatedAmount }));
+        }
+      } else if (swapState.fromToken && swapState.toToken && swapState.fromAmount) {
+        // Fallback to calculation if we're not connected
+        const calculatedAmount = calculateSwapAmount(
+          swapState.fromToken,
+          swapState.toToken,
+          swapState.fromAmount
+        );
+        setSwapState(prev => ({ ...prev, toAmount: calculatedAmount }));
+      }
+    };
+    
+    getQuote();
+  }, [swapState.fromToken, swapState.toToken, swapState.fromAmount, address, isTestnet]);
   
   // Handle swap action
   const handleSwap = async () => {
@@ -117,8 +140,13 @@ const Swap = () => {
       return;
     }
     
-    if (!isSwapAvailable(selectedNetwork.id)) {
-      toast.error(`Swapping is not available on ${selectedNetwork.name} network`);
+    if (!address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+    
+    if (!isPairSupported) {
+      toast.error("This token pair is not supported for swapping");
       return;
     }
     
@@ -126,19 +154,40 @@ const Swap = () => {
     setTxStatus('pending');
     
     try {
-      await executeContractSwap(
+      const success = await executeSymbiosisSwap(
         swapState.fromToken,
         swapState.toToken,
         swapState.fromAmount,
         swapState.slippage,
+        address,
         isTestnet
       );
       
-      // Note: We don't set success here as the transaction is monitored via the useEffect
+      if (success) {
+        setTxStatus('success');
+        // Reset form after successful swap with a delay
+        setTimeout(() => {
+          setSwapState(prev => ({
+            ...prev,
+            fromAmount: '',
+            toAmount: '',
+          }));
+          setTxStatus(null);
+        }, 5000);
+      } else {
+        setTxStatus('error');
+        setTimeout(() => {
+          setTxStatus(null);
+        }, 5000);
+      }
     } catch (error) {
       console.error("Swap error:", error);
+      setTxStatus('error');
+      setTimeout(() => {
+        setTxStatus(null);
+      }, 5000);
+    } finally {
       setIsSwapping(false);
-      setTxStatus(null);
     }
   };
   
@@ -232,10 +281,16 @@ const Swap = () => {
           />
         </div>
         
+        {!isPairSupported && swapState.fromToken && swapState.toToken && (
+          <div className="mt-4 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-yellow-300 text-sm">
+            This token pair is not supported for swapping via Symbiosis
+          </div>
+        )}
+        
         <div className="mt-6">
           <Button 
             className="w-full py-6 text-lg font-medium"
-            disabled={!swapState.fromToken || !swapState.toToken || !swapState.fromAmount || isSwapping}
+            disabled={!swapState.fromToken || !swapState.toToken || !swapState.fromAmount || isSwapping || (swapState.fromToken && swapState.toToken && !isPairSupported)}
             onClick={isConnected ? handleSwap : () => {
               // Show wallet dialog if not connected
               if (selectedWallet) {
@@ -251,12 +306,17 @@ const Swap = () => {
                 ? "Swapping..." 
                 : txStatus === 'success' 
                   ? "Swap Successful" 
-                  : "Swap"}
+                  : swapState.fromToken && swapState.toToken && !isPairSupported
+                    ? "Pair Not Supported"
+                    : "Swap"}
           </Button>
         </div>
       </CardContent>
     </Card>
   );
 };
+
+// Import ethers for blockchain interactions
+import { ethers } from 'ethers';
 
 export default Swap;
