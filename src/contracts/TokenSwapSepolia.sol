@@ -3,13 +3,12 @@
 pragma solidity ^0.8.17;
 
 /**
- * @title TokenSwap
+ * @title TokenSwapSepolia
  * @dev A simple token swap contract for demonstration purposes on Sepolia testnet
  * Instructions for deployment:
- * 1. Deploy this contract on Sepolia testnet (https://sepolia.etherscan.io)
- * 2. Use Remix (https://remix.ethereum.org) or Hardhat for deployment
- * 3. Set the fee collector address in the constructor
- * 4. After deployment, copy the contract address and update it in src/config/index.ts
+ * 1. Deploy this contract on Sepolia testnet using Remix IDE (https://remix.ethereum.org)
+ * 2. Set your address as the fee collector in the constructor
+ * 3. After deployment, copy the contract address and update it in src/config/index.ts
  */
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -82,11 +81,5 @@ contract TokenSwapSepolia is Ownable {
     // Emergency withdrawal function for owner
     function rescueTokens(address _token, uint256 _amount) external onlyOwner {
         IERC20(_token).transfer(owner(), _amount);
-    }
-    
-    // Test function to create ERC20 test tokens (only on Sepolia)
-    function createTestTokens() external onlyOwner {
-        // This function would be used to create test tokens
-        // On a real network, you would use existing tokens
     }
 }
