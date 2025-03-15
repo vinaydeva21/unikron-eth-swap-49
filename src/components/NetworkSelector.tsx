@@ -13,10 +13,14 @@ import {
 
 interface NetworkSelectorProps {
   onSelectNetwork?: (network: Network) => void;
+  selectedNetwork?: Network;
 }
 
-const NetworkSelector = ({ onSelectNetwork }: NetworkSelectorProps) => {
-  const { selectedNetwork, setSelectedNetwork } = useNetwork();
+const NetworkSelector = ({ onSelectNetwork, selectedNetwork: propSelectedNetwork }: NetworkSelectorProps) => {
+  const { selectedNetwork: contextSelectedNetwork, setSelectedNetwork } = useNetwork();
+  
+  // Use prop value if provided, otherwise use context value
+  const displayNetwork = propSelectedNetwork || contextSelectedNetwork;
   
   const handleNetworkSelect = (network: Network) => {
     setSelectedNetwork(network);
@@ -31,11 +35,11 @@ const NetworkSelector = ({ onSelectNetwork }: NetworkSelectorProps) => {
         <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-black/20 border border-unikron-blue/10 outline-none">
           <div className="flex items-center gap-2">
             <img 
-              src={selectedNetwork?.icon || NETWORKS[0].icon} 
-              alt={selectedNetwork?.name || NETWORKS[0].name} 
+              src={displayNetwork?.icon || NETWORKS[0].icon} 
+              alt={displayNetwork?.name || NETWORKS[0].name} 
               className="h-5 w-5 rounded-full" 
             />
-            <span className="text-white font-medium">{selectedNetwork?.name || NETWORKS[0].name}</span>
+            <span className="text-white font-medium">{displayNetwork?.name || NETWORKS[0].name}</span>
           </div>
           <ChevronDown className="h-4 w-4 text-white/70" />
         </button>
