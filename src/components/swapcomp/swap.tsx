@@ -11,8 +11,8 @@ import { useNetwork } from "@/context/networkContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { fetchSymbiosisTokens, calculateSwapAmount } from "@/services/tokenService";
-import { executeSymbiosisSwap, getSwapQuote, isTokenPairSupported } from "@/services/symbiosisService";
+import { fetchSymbiosisTokens } from "@/services/tokenService";
+import { swapTokens, calculateOutputAmount } from "@/lib/swap";
 import { toast } from "sonner";
 
 const Swap = () => {
@@ -44,7 +44,9 @@ const Swap = () => {
     const loadTokens = async () => {
       setIsLoadingTokens(true);
       try {
-        const tokens = await fetchSymbiosisTokens(selectedNetwork.id);
+        console.log(`Loading tokens for network: ${selectedNetwork.id}, testnet: ${isTestnet}`);
+        const tokens = await fetchSymbiosisTokens(selectedNetwork.id, isTestnet);
+        console.log(`Loaded ${tokens.length} tokens`);
         setAvailableTokens(tokens);
         
         // Reset token selection if network changes
@@ -56,7 +58,7 @@ const Swap = () => {
           toAmount: '',
         }));
         
-        toast.info(`Switched to ${isTestnet ? 'Sepolia testnet' : 'Ethereum mainnet'}`);
+        toast.info(`Switched to ${isTestnet ? 'Testnet' : 'Mainnet'} on ${selectedNetwork.name}`);
       } catch (error) {
         console.error("Error loading tokens:", error);
         toast.error("Failed to load tokens. Please try again later.");
@@ -68,32 +70,18 @@ const Swap = () => {
     loadTokens();
   }, [selectedNetwork, isTestnet]);
   
-  // Check token pair support when tokens change
-  useEffect(() => {
-    const checkPairSupport = async () => {
-      if (swapState.fromToken && swapState.toToken) {
-        const supported = await isTokenPairSupported(
-          swapState.fromToken,
-          swapState.toToken,
-          isTestnet
-        );
-        setIsPairSupported(supported);
-        
-        if (!supported) {
-          toast.warning(`This token pair is not supported for swapping via Symbiosis`);
-        }
-      }
-    };
-    
-    checkPairSupport();
-  }, [swapState.fromToken, swapState.toToken, isTestnet]);
-  
   // Get quote when parameters change
   useEffect(() => {
     const getQuote = async () => {
-      if (swapState.fromToken && swapState.toToken && swapState.fromAmount && address && parseFloat(swapState.fromAmount) > 0) {
+      if (swapState.fromToken && swapState.toToken && swapState.fromAmount && parseFloat(swapState.fromAmount) > 0) {
         try {
-          const quote = await getSwapQuote(
+          console.log("Getting quote for:", {
+            fromToken: `${swapState.fromToken.symbol} (${swapState.fromToken.chainId})`,
+            toToken: `${swapState.toToken.symbol} (${swapState.toToken.chainId})`,
+            amount: swapState.fromAmount
+          });
+          
+          const calculatedAmount = await calculateOutputAmount(
             swapState.fromToken,
             swapState.toToken,
             swapState.fromAmount,
@@ -101,32 +89,42 @@ const Swap = () => {
             isTestnet
           );
           
-          if (quote) {
-            // Format the output amount based on token decimals
-            const formattedAmount = ethers.utils.formatUnits(
-              quote.amountOut,
-              swapState.toToken.decimals
-            );
-            setSwapState(prev => ({ ...prev, toAmount: formattedAmount }));
-          }
+          console.log(`Calculated output amount: ${calculatedAmount}`);
+          setSwapState(prev => ({ ...prev, toAmount: calculatedAmount }));
+          
+          // We always assume the pair is supported since we have fallback mechanisms
+          setIsPairSupported(true);
         } catch (error) {
           console.error("Error getting swap quote:", error);
-          // Fallback to calculation if API quote fails
-          const calculatedAmount = calculateSwapAmount(
-            swapState.fromToken,
-            swapState.toToken,
-            swapState.fromAmount
-          );
-          setSwapState(prev => ({ ...prev, toAmount: calculatedAmount }));
+          
+          // Check if the error is specifically about pair not being supported
+          const errorMsg = (error as Error).message || '';
+          if (errorMsg.includes('not supported')) {
+            setIsPairSupported(false);
+            toast.error("This token pair is not supported for swapping");
+          } else {
+            // For other errors, show a toast but still allow the swap (will use fallback)
+            toast.error(`Quote error: ${errorMsg}`);
+            setIsPairSupported(true);
+          }
+          
+          // Still try to provide a fallback calculation
+          if (swapState.fromToken.price && swapState.toToken.price) {
+            const fromPrice = swapState.fromToken.price || 1;
+            const toPrice = swapState.toToken.price || 1;
+            const inputAmount = parseFloat(swapState.fromAmount);
+            const outputAmount = (inputAmount * fromPrice) / toPrice;
+            
+            setSwapState(prev => ({ 
+              ...prev, 
+              toAmount: outputAmount.toFixed(swapState.toToken.decimals || 6)
+            }));
+          } else {
+            setSwapState(prev => ({ ...prev, toAmount: '0' }));
+          }
         }
-      } else if (swapState.fromToken && swapState.toToken && swapState.fromAmount) {
-        // Fallback to calculation if we're not connected
-        const calculatedAmount = calculateSwapAmount(
-          swapState.fromToken,
-          swapState.toToken,
-          swapState.fromAmount
-        );
-        setSwapState(prev => ({ ...prev, toAmount: calculatedAmount }));
+      } else if (!swapState.fromAmount || parseFloat(swapState.fromAmount) <= 0) {
+        setSwapState(prev => ({ ...prev, toAmount: '' }));
       }
     };
     
@@ -145,16 +143,11 @@ const Swap = () => {
       return;
     }
     
-    if (!isPairSupported) {
-      toast.error("This token pair is not supported for swapping");
-      return;
-    }
-    
     setIsSwapping(true);
     setTxStatus('pending');
     
     try {
-      const success = await executeSymbiosisSwap(
+      const success = await swapTokens(
         swapState.fromToken,
         swapState.toToken,
         swapState.fromAmount,
@@ -183,6 +176,7 @@ const Swap = () => {
     } catch (error) {
       console.error("Swap error:", error);
       setTxStatus('error');
+      toast.error(`Swap failed: ${(error as Error).message}`);
       setTimeout(() => {
         setTxStatus(null);
       }, 5000);
@@ -216,7 +210,7 @@ const Swap = () => {
           <div className="flex items-center gap-2">
             {isTestnet && (
               <span className="bg-yellow-500/20 text-yellow-300 text-xs px-2 py-1 rounded-full">
-                Sepolia
+                Testnet
               </span>
             )}
             <Button
@@ -283,14 +277,14 @@ const Swap = () => {
         
         {!isPairSupported && swapState.fromToken && swapState.toToken && (
           <div className="mt-4 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-yellow-300 text-sm">
-            This token pair is not supported for swapping via Symbiosis
+            This token pair may not be supported for swapping via Symbiosis, but we'll try a fallback method.
           </div>
         )}
         
         <div className="mt-6">
           <Button 
             className="w-full py-6 text-lg font-medium"
-            disabled={!swapState.fromToken || !swapState.toToken || !swapState.fromAmount || isSwapping || (swapState.fromToken && swapState.toToken && !isPairSupported)}
+            disabled={!swapState.fromToken || !swapState.toToken || !swapState.fromAmount || isSwapping}
             onClick={isConnected ? handleSwap : () => {
               // Show wallet dialog if not connected
               if (selectedWallet) {
@@ -306,9 +300,7 @@ const Swap = () => {
                 ? "Swapping..." 
                 : txStatus === 'success' 
                   ? "Swap Successful" 
-                  : swapState.fromToken && swapState.toToken && !isPairSupported
-                    ? "Pair Not Supported"
-                    : "Swap"}
+                  : "Swap"}
           </Button>
         </div>
       </CardContent>

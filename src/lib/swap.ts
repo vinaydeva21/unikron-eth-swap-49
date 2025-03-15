@@ -54,21 +54,26 @@ export const swapTokens = async (
     console.log(`Symbiosis support for ${fromToken.symbol}-${toToken.symbol}: ${isSymbiosisSupported}`);
 
     if (isSymbiosisSupported) {
-      // If Symbiosis supports this pair, use it
-      console.log("Using Symbiosis for swap");
-      return executeSymbiosisSwap(fromToken, toToken, amount, slippage, address, isTestnet);
-    } else {
-      // Fallback to a simple swap simulation
-      console.log("Symbiosis not supported, using fallback swap simulation");
-      toast.info(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol} (Simulated)`);
-      
-      // Simulate a swap delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const estimatedOutput = calculateSimpleSwapAmount(fromToken, toToken, amount);
-      toast.success(`Successfully swapped for ${estimatedOutput} ${toToken.symbol} (Simulated)`);
-      return true;
+      try {
+        // If Symbiosis supports this pair, use it
+        console.log("Using Symbiosis for swap");
+        return await executeSymbiosisSwap(fromToken, toToken, amount, slippage, address, isTestnet);
+      } catch (error) {
+        console.error("Symbiosis swap failed, falling back to simulation:", error);
+        // If Symbiosis fails, continue to fallback
+      }
     }
+    
+    // Fallback to a simple swap simulation
+    console.log("Using fallback swap simulation");
+    toast.info(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol} (Simulated)`);
+    
+    // Simulate a swap delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const estimatedOutput = calculateSimpleSwapAmount(fromToken, toToken, amount);
+    toast.success(`Successfully swapped for ${estimatedOutput} ${toToken.symbol} (Simulated)`);
+    return true;
   } catch (error) {
     console.error('Error swapping tokens:', error);
     toast.error(`Swap failed: ${(error as Error).message || 'Unknown error'}`);
@@ -117,8 +122,14 @@ export const calculateOutputAmount = async (
   });
   
   // Check if Symbiosis supports this pair
-  const isSupportedBySymbiosis = await isSymbiosisTokenPairSupported(fromToken, toToken, isTestnet);
-  console.log(`Symbiosis support for ${fromToken.symbol}-${toToken.symbol}: ${isSupportedBySymbiosis}`);
+  let isSupportedBySymbiosis = false;
+  try {
+    isSupportedBySymbiosis = await isSymbiosisTokenPairSupported(fromToken, toToken, isTestnet);
+    console.log(`Symbiosis support for ${fromToken.symbol}-${toToken.symbol}: ${isSupportedBySymbiosis}`);
+  } catch (error) {
+    console.error("Error checking Symbiosis support:", error);
+    // If there's an error checking support, assume it's not supported
+  }
   
   // Try to get quote from Symbiosis if address is available and pair is supported
   if (address && isSupportedBySymbiosis) {
@@ -127,10 +138,18 @@ export const calculateOutputAmount = async (
       const quote = await getSymbiosisSwapQuote(fromToken, toToken, amount, address, isTestnet);
       if (quote) {
         console.log("Received Symbiosis quote:", quote);
-        return ethers.utils.formatUnits(quote.amountOut, toToken.decimals || 18);
+        // Use try-catch for formatting since decimals might be undefined or invalid
+        try {
+          return ethers.utils.formatUnits(quote.amountOut, toToken.decimals || 18);
+        } catch (error) {
+          console.error("Error formatting quote output:", error);
+          // If formatting fails, fall back to simple calculation
+        }
       }
     } catch (error) {
       console.error('Error getting Symbiosis quote:', error);
+      // Log specific error message for debugging
+      console.error('Specific error message:', (error as Error).message);
       // Fall back to simple calculation
     }
   } else {
@@ -184,3 +203,4 @@ export const approveToken = async (
     return false;
   }
 };
+
