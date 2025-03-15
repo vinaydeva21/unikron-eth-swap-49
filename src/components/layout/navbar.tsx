@@ -1,5 +1,4 @@
 
-import { ModeToggle } from "@/components/mode-toggle";
 import WalletConnector from "@/components/walletconnector/WalletConnector";
 import NetworkToggle from "@/components/NetworkToggle";
 import { useTheme } from "next-themes";
@@ -20,7 +19,6 @@ const Navbar = () => {
         
         <div className="flex items-center gap-4">
           <NetworkToggle />
-          <ModeToggle />
           <WalletConnector />
         </div>
       </div>
