@@ -5,12 +5,13 @@ export interface WalletProvider {
   icon: string;
   networks: string[];
   isRainbowKit?: boolean;
+  isCardano?: boolean;
 }
 
 export const WALLET_PROVIDERS: WalletProvider[] = [
   {
     id: 'rainbowkit',
-    name: 'Rainbow Wallet',
+    name: 'RainbowKit',
     icon: '/wallets/rainbow.svg',
     networks: ['ethereum', 'arbitrum'],
     isRainbowKit: true
@@ -22,21 +23,17 @@ export const WALLET_PROVIDERS: WalletProvider[] = [
     networks: ['ethereum', 'arbitrum']
   },
   {
-    id: 'walletconnect',
-    name: 'WalletConnect',
-    icon: '/wallets/walletconnect.svg',
-    networks: ['ethereum', 'arbitrum']
-  },
-  {
     id: 'nami',
     name: 'Nami',
     icon: '/wallets/nami.svg',
-    networks: ['cardano']
+    networks: ['cardano'],
+    isCardano: true
   },
   {
     id: 'yoroi',
     name: 'Yoroi',
     icon: '/wallets/yoroi.svg',
-    networks: ['cardano']
+    networks: ['cardano'],
+    isCardano: true
   }
 ];

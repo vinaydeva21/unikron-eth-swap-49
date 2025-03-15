@@ -27,6 +27,12 @@ const WalletConnector = () => {
   // Function to handle wallet connection
   const handleWalletConnect = async (wallet: WalletProvider) => {
     try {
+      if (wallet.isRainbowKit) {
+        // Close the dialog as RainbowKit will show its own UI
+        setOpen(false);
+        return;
+      }
+      
       await connect(wallet);
       setOpen(false);
     } catch (error) {
@@ -87,7 +93,7 @@ const WalletConnector = () => {
             </div>
           ) : (
             <NotConnected 
-              walletProviders={WALLET_PROVIDERS} 
+              walletProviders={WALLET_PROVIDERS.filter(w => w.id !== 'walletconnect')} 
               onConnect={handleWalletConnect} 
             />
           )}
