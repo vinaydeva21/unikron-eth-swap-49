@@ -20,6 +20,7 @@ const Navbar = () => {
         
         <div className="flex items-center gap-4">
           <NetworkToggle />
+          <ModeToggle />
           <WalletConnector />
         </div>
       </div>
