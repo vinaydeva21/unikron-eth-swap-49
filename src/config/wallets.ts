@@ -11,7 +11,7 @@ export interface WalletProvider {
 export const WALLET_PROVIDERS: WalletProvider[] = [
   {
     id: 'rainbowkit',
-    name: 'RainbowKit',
+    name: 'Ethereum Wallets',
     icon: '/wallets/rainbow.svg',
     networks: ['ethereum', 'arbitrum'],
     isRainbowKit: true

@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { WalletContext } from './walletContext';
 import { WalletProvider } from '@/config/wallets';
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect } from 'wagmi';
 import { WALLET_PROVIDERS } from '@/config/wallets';
 
 export const WalletContextProvider = ({ children }: { children: React.ReactNode }) => {
@@ -14,6 +13,7 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
   const [cardanoAPI, setCardanoAPI] = useState<any>(null);
   
   const { address: wagmiAddress, isConnected: isWagmiConnected } = useAccount();
+  const { openConnectModal } = useConnect();
 
   useEffect(() => {
     if (isWagmiConnected && wagmiAddress) {
@@ -22,6 +22,13 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
         setIsConnected(true);
         setSelectedWallet(rainbowKitWallet);
         setAddress(wagmiAddress);
+        
+        toast.success(`Connected to ${rainbowKitWallet.name}`);
+      }
+    } else if (!isWagmiConnected && selectedWallet?.isRainbowKit) {
+      if (isConnected) {
+        setIsConnected(false);
+        setAddress(null);
       }
     }
     
@@ -104,6 +111,13 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
     try {
       if (wallet.isRainbowKit) {
         setSelectedWallet(wallet);
+        if (openConnectModal) {
+          openConnectModal();
+        } else {
+          console.error("RainbowKit connect modal not available");
+          toast.error("Unable to open wallet connection modal");
+        }
+        
         return;
       }
       

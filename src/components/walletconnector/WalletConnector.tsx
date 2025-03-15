@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { WALLET_PROVIDERS, WalletProvider } from '@/config/wallets';
 import { useWallet } from '@/context/walletContext';
@@ -10,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import NotConnected from './not_connected';
 import { WalletIcon } from './walletIcons';
@@ -27,8 +29,10 @@ const WalletConnector = () => {
   const handleWalletConnect = async (wallet: WalletProvider) => {
     try {
       if (wallet.isRainbowKit) {
-        // For RainbowKit wallet, we just close the dialog and let RainbowKit handle the connection
+        // Close the dialog first
         setOpen(false);
+        // Connect using RainbowKit wallet (this triggers RainbowKit's own UI)
+        await connect(wallet);
         return;
       }
       
@@ -39,7 +43,24 @@ const WalletConnector = () => {
     }
   };
 
-  // Render the RainbowKit ConnectButton when RainbowKit is selected
+  // If RainbowKit is selected but not connected, show the custom button that will trigger RainbowKit UI
+  if (selectedWallet?.isRainbowKit && !isConnected) {
+    return (
+      <ConnectButton.Custom>
+        {({ openConnectModal }) => (
+          <Button 
+            className="bg-unikron-blue hover:bg-unikron-blue-light text-white transition-all duration-300"
+            onClick={openConnectModal}
+          >
+            <Wallet className="mr-2 h-4 w-4" />
+            Connect Wallet
+          </Button>
+        )}
+      </ConnectButton.Custom>
+    );
+  }
+  
+  // Render the RainbowKit ConnectButton when RainbowKit is selected and connected
   if (isConnected && selectedWallet?.isRainbowKit) {
     return <ConnectButton showBalance={false} chainStatus="icon" accountStatus="address" />;
   }
@@ -69,6 +90,9 @@ const WalletConnector = () => {
           <DialogTitle>
             {isConnected ? "Wallet Connected" : "Connect Wallet"}
           </DialogTitle>
+          <DialogDescription className="text-white/70">
+            Select a wallet to connect to UNIKRON Swap
+          </DialogDescription>
         </DialogHeader>
         
         {isConnected ? (
@@ -92,7 +116,7 @@ const WalletConnector = () => {
           </div>
         ) : (
           <NotConnected 
-            walletProviders={WALLET_PROVIDERS.filter(w => w.id !== 'walletconnect')} 
+            walletProviders={WALLET_PROVIDERS} 
             onConnect={handleWalletConnect} 
           />
         )}
