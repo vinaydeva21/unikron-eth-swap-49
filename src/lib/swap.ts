@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Token } from '@/lib/types';
 import { getSigner } from './ethereum';
 import { ethers } from 'ethers';
+import { executeSymbiosisSwap, getSymbiosisSwapQuote, isSymbiosisTokenPairSupported } from './symbiosisSwap';
 
 /**
  * Swap tokens using a decentralized exchange
@@ -11,20 +12,27 @@ export const swapTokens = async (
   fromToken: Token,
   toToken: Token,
   amount: string,
-  slippage: number
+  slippage: number,
+  address: string,
+  isTestnet: boolean = false
 ): Promise<boolean> => {
   try {
-    toast.info(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol}`);
-    
-    // This is just a placeholder for a real swap operation
-    // In a real app, you would interact with a DEX contract
-    const signer = getSigner();
-    
-    // Simulate a swap delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    toast.success(`Successfully swapped for ${amount} ${toToken.symbol}`);
-    return true;
+    // First check if we can use Symbiosis
+    const isSymbiosisSupported = await isSymbiosisTokenPairSupported(fromToken, toToken, isTestnet);
+
+    if (isSymbiosisSupported) {
+      // If Symbiosis supports this pair, use it
+      return executeSymbiosisSwap(fromToken, toToken, amount, slippage, address, isTestnet);
+    } else {
+      // Fallback to a simple swap simulation
+      toast.info(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol}`);
+      
+      // Simulate a swap delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.success(`Successfully swapped for ${amount} ${toToken.symbol}`);
+      return true;
+    }
   } catch (error) {
     console.error('Error swapping tokens:', error);
     toast.error(`Swap failed: ${(error as Error).message || 'Unknown error'}`);
@@ -34,17 +42,38 @@ export const swapTokens = async (
 
 /**
  * Calculate output amount based on input amount and token prices
+ * Use Symbiosis for quote first, fall back to simple calculation
  */
-export const calculateOutputAmount = (
+export const calculateOutputAmount = async (
   fromToken: Token,
   toToken: Token,
-  amount: string
-): string => {
-  if (!amount || amount === '0' || !fromToken.price || !toToken.price) {
+  amount: string,
+  address: string | undefined,
+  isTestnet: boolean = false
+): Promise<string> => {
+  if (!amount || amount === '0' || !fromToken || !toToken) {
     return '0';
   }
   
+  // Try to get quote from Symbiosis if address is available
+  if (address) {
+    try {
+      const quote = await getSymbiosisSwapQuote(fromToken, toToken, amount, address, isTestnet);
+      if (quote) {
+        return ethers.utils.formatUnits(quote.amountOut, toToken.decimals || 18);
+      }
+    } catch (error) {
+      console.error('Error getting Symbiosis quote:', error);
+      // Fall back to simple calculation
+    }
+  }
+  
+  // Simple calculation based on token prices
   const inputAmount = parseFloat(amount);
+  if (!fromToken.price || !toToken.price) {
+    return '0';
+  }
+  
   const inputValue = inputAmount * fromToken.price;
   const outputAmount = inputValue / toToken.price;
   
