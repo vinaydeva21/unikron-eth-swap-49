@@ -1,3 +1,4 @@
+
 import { WalletProvider } from './wallets';
 import { Network } from '@/lib/types';
 
@@ -11,6 +12,8 @@ export const APP_CONFIG = {
     ethereum: "https://etherscan.io",
     arbitrum: "https://arbiscan.io",
     polygonzk: "https://zkevm.polygonscan.com",
+    bitcoin: "https://blockstream.info",
+    ton: "https://tonscan.org",
     goerli: "https://goerli.etherscan.io",
     sepolia: "https://sepolia.etherscan.io",
   }
@@ -31,6 +34,18 @@ export const NETWORKS: Network[] = [
     name: "Ethereum",
     icon: "/logos/ethereum.svg",
     chainId: 1
+  },
+  {
+    id: "bitcoin",
+    name: "Bitcoin",
+    icon: "/tokens/btc.svg",  // Note: We'll need to add this asset
+    chainId: 9000  // Using a custom chainId for Bitcoin
+  },
+  {
+    id: "ton",
+    name: "TON",
+    icon: "/tokens/ton.svg",  // Note: We'll need to add this asset
+    chainId: 9010  // Using a custom chainId for TON
   },
   {
     id: "cardano",
@@ -72,7 +87,19 @@ export const DEFAULT_TOKENS = {
       icon: "/tokens/eth.svg",
       decimals: 18,
       network: "ethereum",
+      address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
+      chainId: 1,
+      price: 3500
+    },
+    {
+      id: "weth",
+      symbol: "WETH",
+      name: "Wrapped Ethereum",
+      icon: "/tokens/eth.svg",
+      decimals: 18,
+      network: "ethereum",
       address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH address
+      chainId: 1,
       price: 3500
     },
     {
@@ -83,7 +110,32 @@ export const DEFAULT_TOKENS = {
       decimals: 6,
       network: "ethereum",
       address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      chainId: 1,
       price: 1
+    }
+  ],
+  bitcoin: [
+    {
+      id: "btc",
+      symbol: "BTC",
+      name: "Bitcoin",
+      icon: "/tokens/btc.svg",
+      decimals: 8,
+      network: "bitcoin",
+      chainId: 9000,
+      price: 65000
+    }
+  ],
+  ton: [
+    {
+      id: "ton",
+      symbol: "TON",
+      name: "Toncoin",
+      icon: "/tokens/ton.svg",
+      decimals: 9,
+      network: "ton",
+      chainId: 9010,
+      price: 7.5
     }
   ],
   sepolia: [
@@ -94,7 +146,19 @@ export const DEFAULT_TOKENS = {
       icon: "/tokens/eth.svg",
       decimals: 18,
       network: "sepolia",
+      address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
+      chainId: 11155111,
+      price: 3500
+    },
+    {
+      id: "weth-sepolia",
+      symbol: "WETH",
+      name: "Wrapped ETH (Sepolia)",
+      icon: "/tokens/eth.svg", 
+      decimals: 18,
+      network: "sepolia",
       address: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", // Wrapped ETH on Sepolia
+      chainId: 11155111,
       price: 3500
     },
     {
@@ -105,6 +169,7 @@ export const DEFAULT_TOKENS = {
       decimals: 6,
       network: "sepolia",
       address: "0x7169D38820dfd117C3FA1f22a697dBA58d90BA06", // Example USDT on Sepolia
+      chainId: 11155111,
       price: 1
     }
   ],
@@ -117,6 +182,7 @@ export const DEFAULT_TOKENS = {
       decimals: 18,
       network: "arbitrum",
       address: "0x912CE59144191C1204E64559FE8253a0e49E6548",
+      chainId: 42161,
       price: 1.2
     },
     {
@@ -126,7 +192,19 @@ export const DEFAULT_TOKENS = {
       icon: "/tokens/eth.svg",
       decimals: 18,
       network: "arbitrum",
+      address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // Native ETH
+      chainId: 42161,
+      price: 3500
+    },
+    {
+      id: "weth-arb",
+      symbol: "WETH",
+      name: "Wrapped ETH (Arbitrum)",
+      icon: "/tokens/eth.svg",
+      decimals: 18,
+      network: "arbitrum",
       address: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH on Arbitrum
+      chainId: 42161,
       price: 3500
     }
   ]
@@ -156,6 +234,30 @@ export const SYMBIOSIS_TESTNET_TOKENS = {
       address: "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0", // From Symbiosis docs
       chainId: 11155111,
       price: 1
+    }
+  ],
+  bitcoin_testnet: [
+    {
+      id: "btc-testnet",
+      symbol: "BTC",
+      name: "Bitcoin Testnet",
+      icon: "/tokens/btc.svg",
+      decimals: 8,
+      network: "bitcoin_testnet",
+      chainId: 9001,
+      price: 65000
+    }
+  ],
+  ton_testnet: [
+    {
+      id: "ton-testnet",
+      symbol: "TON",
+      name: "TON Testnet",
+      icon: "/tokens/ton.svg",
+      decimals: 9,
+      network: "ton_testnet",
+      chainId: 9011,
+      price: 7.5
     }
   ],
   bsc_testnet: [

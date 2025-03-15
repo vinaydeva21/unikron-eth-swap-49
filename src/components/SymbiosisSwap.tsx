@@ -50,12 +50,21 @@ const SymbiosisSwap = () => {
   const [txStatus, setTxStatus] = useState<'pending' | 'success' | 'error' | null>(null);
   const [isPairSupported, setIsPairSupported] = useState(true);
   const [swapProgress, setSwapProgress] = useState(0);
+  const [isSpecialChain, setIsSpecialChain] = useState(false);
   
   // Load tokens when network changes or testnet toggle changes
   useEffect(() => {
     const loadTokens = async () => {
       setIsLoadingTokens(true);
       try {
+        // Check if the selected network is a special network like Bitcoin or TON
+        const isSpecial = selectedNetwork.id === 'bitcoin' || 
+                         selectedNetwork.id === 'ton' ||
+                         selectedNetwork.name.toLowerCase().includes('bitcoin') ||
+                         selectedNetwork.name.toLowerCase().includes('ton');
+        
+        setIsSpecialChain(isSpecial);
+        
         const tokens = await fetchSymbiosisTokens(selectedNetwork.id, isTestnet);
         setAvailableTokens(tokens);
         
@@ -68,7 +77,11 @@ const SymbiosisSwap = () => {
           toAmount: '',
         }));
         
-        toast.info(`Switched to ${isTestnet ? 'Testnet' : 'Mainnet'}`);
+        if (isSpecial) {
+          toast.info(`${selectedNetwork.name} integration requires a compatible wallet`);
+        } else {
+          toast.info(`Switched to ${isTestnet ? 'Testnet' : 'Mainnet'}`);
+        }
       } catch (error) {
         console.error("Error loading tokens:", error);
         toast.error("Failed to load tokens. Please try again later.");
@@ -84,15 +97,27 @@ const SymbiosisSwap = () => {
   useEffect(() => {
     const checkPairSupport = async () => {
       if (swapState.fromToken && swapState.toToken) {
-        const supported = await isSymbiosisTokenPairSupported(
-          swapState.fromToken,
-          swapState.toToken,
-          isTestnet
-        );
-        setIsPairSupported(supported);
-        
-        if (!supported) {
-          toast.warning(`This token pair is not supported for swapping via Symbiosis`);
+        try {
+          console.log("Checking support for pair:", {
+            fromToken: `${swapState.fromToken.symbol} (${swapState.fromToken.chainId})`,
+            toToken: `${swapState.toToken.symbol} (${swapState.toToken.chainId})`
+          });
+          
+          const supported = await isSymbiosisTokenPairSupported(
+            swapState.fromToken,
+            swapState.toToken,
+            isTestnet
+          );
+          
+          console.log(`Pair support result: ${supported}`);
+          setIsPairSupported(supported);
+          
+          if (!supported) {
+            toast.warning(`This token pair is not supported for swapping via Symbiosis`);
+          }
+        } catch (error) {
+          console.error("Error checking pair support:", error);
+          setIsPairSupported(false);
         }
       }
     };
@@ -103,8 +128,37 @@ const SymbiosisSwap = () => {
   // Get quote when parameters change
   useEffect(() => {
     const getQuote = async () => {
-      if (swapState.fromToken && swapState.toToken && swapState.fromAmount && address && parseFloat(swapState.fromAmount) > 0) {
+      if (swapState.fromToken && swapState.toToken && swapState.fromAmount && 
+          parseFloat(swapState.fromAmount) > 0) {
         try {
+          console.log("Getting quote for:", {
+            fromToken: swapState.fromToken.symbol,
+            toToken: swapState.toToken.symbol,
+            amount: swapState.fromAmount
+          });
+          
+          // For special chains or if no wallet is connected, use a simplified calculation
+          if (isSpecialChain || !address) {
+            const fromPrice = swapState.fromToken.price || 1;
+            const toPrice = swapState.toToken.price || 1;
+            const inputAmount = parseFloat(swapState.fromAmount);
+            const outputAmount = (inputAmount * fromPrice) / toPrice;
+            
+            setSwapState(prev => ({ 
+              ...prev, 
+              toAmount: outputAmount.toFixed(swapState.toToken.decimals || 6)
+            }));
+            
+            console.log("Using price-based calculation:", {
+              fromPrice,
+              toPrice,
+              result: outputAmount.toFixed(swapState.toToken.decimals || 6)
+            });
+            
+            return;
+          }
+          
+          // Get quote from Symbiosis API
           const quote = await getSymbiosisSwapQuote(
             swapState.fromToken,
             swapState.toToken,
@@ -119,17 +173,44 @@ const SymbiosisSwap = () => {
               quote.amountOut,
               swapState.toToken.decimals || 18
             );
+            
+            console.log("Quote received:", {
+              amountOut: quote.amountOut,
+              formatted: formattedAmount
+            });
+            
             setSwapState(prev => ({ ...prev, toAmount: formattedAmount }));
+          } else {
+            console.log("No quote received, using fallback calculation");
+            // Fallback to price-based calculation
+            const fromPrice = swapState.fromToken.price || 1;
+            const toPrice = swapState.toToken.price || 1;
+            const inputAmount = parseFloat(swapState.fromAmount);
+            const outputAmount = (inputAmount * fromPrice) / toPrice;
+            
+            setSwapState(prev => ({ 
+              ...prev, 
+              toAmount: outputAmount.toFixed(swapState.toToken.decimals || 6)
+            }));
           }
         } catch (error) {
           console.error("Error getting swap quote:", error);
-          // Don't update output amount if there's an error
+          // Fallback to price-based calculation on error
+          const fromPrice = swapState.fromToken.price || 1;
+          const toPrice = swapState.toToken.price || 1;
+          const inputAmount = parseFloat(swapState.fromAmount);
+          const outputAmount = (inputAmount * fromPrice) / toPrice;
+          
+          setSwapState(prev => ({ 
+            ...prev, 
+            toAmount: outputAmount.toFixed(swapState.toToken.decimals || 6)
+          }));
         }
       }
     };
     
     getQuote();
-  }, [swapState.fromToken, swapState.toToken, swapState.fromAmount, address, isTestnet]);
+  }, [swapState.fromToken, swapState.toToken, swapState.fromAmount, address, isTestnet, isSpecialChain]);
   
   // Update progress bar during swapping
   useEffect(() => {
@@ -167,6 +248,13 @@ const SymbiosisSwap = () => {
     
     if (!isPairSupported) {
       toast.error("This token pair is not supported for swapping");
+      return;
+    }
+    
+    // Special handling for BTC/TON chains
+    if (isSpecialChain) {
+      toast.info(`${swapState.fromToken.symbol} or ${swapState.toToken.symbol} swaps require specialized wallet integration`);
+      toast.info("Please check the Symbiosis documentation for details on BTC and TON integration");
       return;
     }
     
@@ -288,6 +376,19 @@ const SymbiosisSwap = () => {
           </div>
         </div>
         
+        {/* Display warning for special chains like BTC and TON */}
+        {isSpecialChain && (
+          <div className="bg-blue-500/10 text-blue-300 p-3 rounded-xl mb-4 text-sm">
+            <div className="font-semibold mb-1">
+              {selectedNetwork.name} Integration Note:
+            </div>
+            <p>
+              Symbiosis supports {selectedNetwork.name} swaps, but requires a compatible wallet.
+              See the documentation for more details on integration.
+            </p>
+          </div>
+        )}
+        
         {showSettings && (
           <div className="bg-black/10 rounded-xl p-4 mb-6">
             <SlippageComponent
@@ -404,7 +505,9 @@ const SymbiosisSwap = () => {
                       ? "Swap Failed"
                       : swapState.fromToken && swapState.toToken && !isPairSupported
                         ? "Pair Not Supported"
-                        : "Swap"}
+                        : isSpecialChain
+                          ? `View ${selectedNetwork.name} Documentation`
+                          : "Swap"}
           </Button>
         </div>
         

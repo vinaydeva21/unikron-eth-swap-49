@@ -3,7 +3,12 @@ import { toast } from 'sonner';
 import { Token } from '@/lib/types';
 import { getSigner } from './ethereum';
 import { ethers } from 'ethers';
-import { executeSymbiosisSwap, getSymbiosisSwapQuote, isSymbiosisTokenPairSupported } from './symbiosisSwap';
+import { 
+  executeSymbiosisSwap, 
+  getSymbiosisSwapQuote, 
+  isSymbiosisTokenPairSupported,
+  getTokenBalance
+} from './symbiosisSwap';
 
 /**
  * Swap tokens using a decentralized exchange
@@ -25,6 +30,24 @@ export const swapTokens = async (
       slippage,
       isTestnet
     });
+
+    // Check if amount is valid
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount to swap");
+      return false;
+    }
+
+    // Check token balance
+    try {
+      const balance = await getTokenBalance(fromToken, address);
+      if (parseFloat(balance) < parseFloat(amount)) {
+        toast.error(`Insufficient ${fromToken.symbol} balance`);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error checking balance:", error);
+      // Continue with the swap attempt even if balance check fails
+    }
 
     // First check if we can use Symbiosis
     const isSymbiosisSupported = await isSymbiosisTokenPairSupported(fromToken, toToken, isTestnet);
@@ -58,13 +81,15 @@ export const swapTokens = async (
  * Used as a fallback when Symbiosis is not available
  */
 const calculateSimpleSwapAmount = (fromToken: Token, toToken: Token, amount: string): string => {
-  if (!fromToken.price || !toToken.price || !amount) {
+  if (!fromToken || !toToken || !amount) {
     return '0';
   }
   
+  const fromPrice = fromToken.price || 1;
+  const toPrice = toToken.price || 1;
   const inputAmount = parseFloat(amount);
-  const inputValue = inputAmount * fromToken.price;
-  const outputAmount = inputValue / toToken.price;
+  const inputValue = inputAmount * fromPrice;
+  const outputAmount = inputValue / toPrice;
   
   return outputAmount.toFixed(6);
 };
@@ -80,7 +105,7 @@ export const calculateOutputAmount = async (
   address: string | undefined,
   isTestnet: boolean = false
 ): Promise<string> => {
-  if (!amount || amount === '0' || !fromToken || !toToken) {
+  if (!amount || parseFloat(amount) <= 0 || !fromToken || !toToken) {
     return '0';
   }
   
@@ -126,8 +151,13 @@ export const approveToken = async (
   amount: string
 ): Promise<boolean> => {
   try {
-    if (!token.address) {
+    if (!token || !token.address) {
       throw new Error('Token address not available');
+    }
+    
+    // For native tokens like ETH, no approval needed
+    if (token.address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
+      return true;
     }
     
     const signer = getSigner();
