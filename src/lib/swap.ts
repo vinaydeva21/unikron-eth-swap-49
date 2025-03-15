@@ -7,6 +7,7 @@ import { executeSymbiosisSwap, getSymbiosisSwapQuote, isSymbiosisTokenPairSuppor
 
 /**
  * Swap tokens using a decentralized exchange
+ * Will try Symbiosis first, then fall back to a simple swap
  */
 export const swapTokens = async (
   fromToken: Token,
@@ -17,20 +18,32 @@ export const swapTokens = async (
   isTestnet: boolean = false
 ): Promise<boolean> => {
   try {
+    console.log("Starting swap process for tokens:", {
+      from: `${fromToken.symbol} (${fromToken.chainId})`,
+      to: `${toToken.symbol} (${toToken.chainId})`,
+      amount,
+      slippage,
+      isTestnet
+    });
+
     // First check if we can use Symbiosis
     const isSymbiosisSupported = await isSymbiosisTokenPairSupported(fromToken, toToken, isTestnet);
+    console.log(`Symbiosis support for ${fromToken.symbol}-${toToken.symbol}: ${isSymbiosisSupported}`);
 
     if (isSymbiosisSupported) {
       // If Symbiosis supports this pair, use it
+      console.log("Using Symbiosis for swap");
       return executeSymbiosisSwap(fromToken, toToken, amount, slippage, address, isTestnet);
     } else {
       // Fallback to a simple swap simulation
-      toast.info(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol}`);
+      console.log("Symbiosis not supported, using fallback swap simulation");
+      toast.info(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol} (Simulated)`);
       
       // Simulate a swap delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      toast.success(`Successfully swapped for ${amount} ${toToken.symbol}`);
+      const estimatedOutput = calculateSimpleSwapAmount(fromToken, toToken, amount);
+      toast.success(`Successfully swapped for ${estimatedOutput} ${toToken.symbol} (Simulated)`);
       return true;
     }
   } catch (error) {
@@ -38,6 +51,22 @@ export const swapTokens = async (
     toast.error(`Swap failed: ${(error as Error).message || 'Unknown error'}`);
     return false;
   }
+};
+
+/**
+ * Calculate a simple swap amount based on token prices
+ * Used as a fallback when Symbiosis is not available
+ */
+const calculateSimpleSwapAmount = (fromToken: Token, toToken: Token, amount: string): string => {
+  if (!fromToken.price || !toToken.price || !amount) {
+    return '0';
+  }
+  
+  const inputAmount = parseFloat(amount);
+  const inputValue = inputAmount * fromToken.price;
+  const outputAmount = inputValue / toToken.price;
+  
+  return outputAmount.toFixed(6);
 };
 
 /**
@@ -55,29 +84,37 @@ export const calculateOutputAmount = async (
     return '0';
   }
   
-  // Try to get quote from Symbiosis if address is available
-  if (address) {
+  console.log("Calculating output amount:", {
+    from: fromToken.symbol,
+    to: toToken.symbol,
+    amount,
+    address: address ? `${address.substring(0, 6)}...` : 'undefined'
+  });
+  
+  // Check if Symbiosis supports this pair
+  const isSupportedBySymbiosis = await isSymbiosisTokenPairSupported(fromToken, toToken, isTestnet);
+  console.log(`Symbiosis support for ${fromToken.symbol}-${toToken.symbol}: ${isSupportedBySymbiosis}`);
+  
+  // Try to get quote from Symbiosis if address is available and pair is supported
+  if (address && isSupportedBySymbiosis) {
     try {
+      console.log("Getting Symbiosis quote");
       const quote = await getSymbiosisSwapQuote(fromToken, toToken, amount, address, isTestnet);
       if (quote) {
+        console.log("Received Symbiosis quote:", quote);
         return ethers.utils.formatUnits(quote.amountOut, toToken.decimals || 18);
       }
     } catch (error) {
       console.error('Error getting Symbiosis quote:', error);
       // Fall back to simple calculation
     }
+  } else {
+    console.log(`Not using Symbiosis quote: address=${!!address}, supported=${isSupportedBySymbiosis}`);
   }
   
   // Simple calculation based on token prices
-  const inputAmount = parseFloat(amount);
-  if (!fromToken.price || !toToken.price) {
-    return '0';
-  }
-  
-  const inputValue = inputAmount * fromToken.price;
-  const outputAmount = inputValue / toToken.price;
-  
-  return outputAmount.toFixed(6);
+  console.log("Using price-based calculation");
+  return calculateSimpleSwapAmount(fromToken, toToken, amount);
 };
 
 /**
@@ -103,7 +140,7 @@ export const approveToken = async (
       signer
     );
     
-    const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
+    const amountInWei = ethers.utils.parseUnits(amount, token.decimals || 18);
     
     toast.info(`Approving ${token.symbol} for trading...`);
     const tx = await tokenContract.approve(spenderAddress, amountInWei);

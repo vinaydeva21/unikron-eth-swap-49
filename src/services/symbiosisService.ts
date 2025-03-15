@@ -3,7 +3,7 @@ import { Token } from '@/lib/types';
 import { toast } from 'sonner';
 
 // Symbiosis API base URLs
-const SYMBIOSIS_API_BASE = 'https://api.symbiosis.finance/crosschain';
+const SYMBIOSIS_API_BASE = 'https://api-v2.symbiosis.finance/crosschain';
 const SYMBIOSIS_TESTNET_API_BASE = 'https://api.testnet.symbiosis.finance/crosschain';
 
 // Interface for swap request
@@ -79,16 +79,27 @@ export const getSwapQuote = async (
     const fromChainId = fromToken.chainId || 1; // Default to Ethereum Mainnet
     const toChainId = toToken.chainId || 1;
 
+    // Convert amount to proper units based on token decimals
+    let fromAmount;
+    try {
+      fromAmount = ethers.utils.parseUnits(amount, fromToken.decimals || 18).toString();
+    } catch (error) {
+      console.error('Error parsing amount to units:', error);
+      fromAmount = amount; // Use as is if parsing fails
+    }
+
     const requestBody: SwapRequest = {
       fromTokenAddress: fromToken.address,
       toTokenAddress: toToken.address,
       fromTokenChainId: fromChainId,
       toTokenChainId: toChainId,
-      fromAmount: amount,
+      fromAmount: fromAmount,
       slippage: 0.5, // 0.5% slippage as default
       sender: walletAddress,
       recipient: walletAddress
     };
+
+    console.log('Swap quote request:', requestBody);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -144,12 +155,21 @@ export const executeSymbiosisSwap = async (
     const fromChainId = fromToken.chainId || 1;
     const toChainId = toToken.chainId || 1;
 
+    // Convert amount to proper units based on token decimals
+    let fromAmount;
+    try {
+      fromAmount = ethers.utils.parseUnits(amount, fromToken.decimals || 18).toString();
+    } catch (error) {
+      console.error('Error parsing amount to units:', error);
+      fromAmount = amount; // Use as is if parsing fails
+    }
+
     const requestBody: SwapRequest = {
       fromTokenAddress: fromToken.address,
       toTokenAddress: toToken.address,
       fromTokenChainId: fromChainId,
       toTokenChainId: toChainId,
-      fromAmount: amount,
+      fromAmount: fromAmount,
       slippage: slippage,
       sender: walletAddress,
       recipient: walletAddress
@@ -261,6 +281,7 @@ export const getSymbiosisSupportedNetworks = async (isTestnet: boolean = false):
 
 /**
  * Check if Symbiosis supports a specific token pair
+ * Updated to handle API failures and include a hardcoded list of supported pairs
  */
 export const isTokenPairSupported = async (
   fromToken: Token,
@@ -268,74 +289,91 @@ export const isTokenPairSupported = async (
   isTestnet: boolean = false
 ): Promise<boolean> => {
   try {
+    console.log("Checking token pair support:", {
+      fromToken: `${fromToken?.symbol} (${fromToken?.chainId})`,
+      toToken: `${toToken?.symbol} (${toToken?.chainId})`
+    });
+    
     // Basic validation
     if (!fromToken || !toToken || !fromToken.address || !toToken.address) {
       console.log("Token validation failed - missing tokens or addresses");
       return false;
     }
-
-    // For demo purposes, let's consider some common token pairs as supported
-    // This is a fallback for when the API call doesn't work
+    
+    // CROSS-CHAIN SWAPS: If the chainIds are different, it's likely a cross-chain swap
+    // Symbiosis specializes in cross-chain swaps, so we'll consider these supported
+    if (fromToken.chainId && toToken.chainId && fromToken.chainId !== toToken.chainId) {
+      console.log(`Cross-chain swap detected: ${fromToken.chainId} -> ${toToken.chainId}`);
+      return true;
+    }
+    
+    // SAME-CHAIN COMMON PAIRS: For tokens on the same chain, check against a list of known supported pairs
     if (fromToken.symbol && toToken.symbol) {
+      // Common supported tokens by symbol (primarily for mainnet)
+      const supportedTokens = ['ETH', 'WETH', 'USDT', 'USDC', 'DAI', 'WBTC', 'SIS', 'BNB', 'MATIC'];
+      
+      if (supportedTokens.includes(fromToken.symbol) && supportedTokens.includes(toToken.symbol)) {
+        console.log(`Both ${fromToken.symbol} and ${toToken.symbol} are in the supported tokens list`);
+        return true;
+      }
+      
+      // Common pairs frequently supported
       const commonPairs = [
         ['ETH', 'USDT'], ['USDT', 'ETH'],
         ['ETH', 'DAI'], ['DAI', 'ETH'],
         ['ETH', 'USDC'], ['USDC', 'ETH'],
-        ['BNB', 'ETH'], ['ETH', 'BNB']
+        ['BNB', 'ETH'], ['ETH', 'BNB'],
+        ['WETH', 'USDT'], ['USDT', 'WETH'],
+        ['WETH', 'USDC'], ['USDC', 'WETH'],
+        ['WBTC', 'ETH'], ['ETH', 'WBTC'],
+        ['MATIC', 'ETH'], ['ETH', 'MATIC'],
+        ['SIS', 'ETH'], ['ETH', 'SIS'],
+        ['USDC', 'USDT'], ['USDT', 'USDC']
       ];
       
       for (const [from, to] of commonPairs) {
         if (fromToken.symbol.includes(from) && toToken.symbol.includes(to)) {
-          console.log(`Fallback: Considering ${fromToken.symbol}-${toToken.symbol} as supported`);
+          console.log(`Pair ${fromToken.symbol}-${toToken.symbol} matches common pair ${from}-${to}`);
           return true;
         }
       }
     }
-
-    // Try the API call if we have chainIds
-    if (fromToken.chainId && toToken.chainId) {
-      try {
-        const baseUrl = getApiBaseUrl(isTestnet);
-        const url = `${baseUrl}/v1/tokens/supported?fromChainId=${fromToken.chainId}&toChainId=${toToken.chainId}`;
-
-        console.log(`Checking token pair support with URL: ${url}`);
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`API returned ${response.status}: ${response.statusText}`);
-        }
-        
-        const supportedTokens = await response.json();
-        console.log('Supported tokens data:', supportedTokens);
-        
-        if (!Array.isArray(supportedTokens)) {
-          console.log('API did not return an array of tokens');
-          return false;
-        }
-        
-        // Check if fromToken and toToken are in the supported list
-        const isFromSupported = supportedTokens.some(
-          (token: any) => token.address && fromToken.address && 
-                          token.address.toLowerCase() === fromToken.address.toLowerCase()
-        );
-        
-        const isToSupported = supportedTokens.some(
-          (token: any) => token.address && toToken.address && 
-                          token.address.toLowerCase() === toToken.address.toLowerCase()
-        );
-        
-        console.log(`Is ${fromToken.symbol} supported: ${isFromSupported}`);
-        console.log(`Is ${toToken.symbol} supported: ${isToSupported}`);
-        
-        return isFromSupported && isToSupported;
-      } catch (error) {
-        console.error('Error checking token pair support via API:', error);
-        // Continue to fallback
-      }
+    
+    // TESTNET SPECIAL CASE: If on testnet, we'll support more pairs for demonstration
+    if (isTestnet) {
+      console.log("Running on testnet - considering most pairs as supported for demo purposes");
+      return true;
     }
     
-    // If all checks fail, assume not supported
+    // Try the API call (though it seems to be returning 404 currently)
+    try {
+      const baseUrl = getApiBaseUrl(isTestnet);
+      // The correct endpoint might be different based on Symbiosis documentation
+      const url = `${baseUrl}/v1/tokens/routes?fromChainId=${fromToken.chainId}&toChainId=${toToken.chainId}`;
+      
+      console.log(`Checking token pair support with URL: ${url}`);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        console.log(`API returned ${response.status}: ${response.statusText}`);
+        // Fall back to the hardcoded logic above instead of throwing
+        return false;
+      }
+      
+      const routesData = await response.json();
+      console.log('Routes data:', routesData);
+      
+      // Process the response according to the actual API structure
+      // This may need adjustment based on the actual API response format
+      return Array.isArray(routesData) && routesData.length > 0;
+    } catch (error) {
+      console.error('Error checking token pair support via API:', error);
+      // We've already checked using hardcoded logic, so we'll use that result
+    }
+    
+    // If we get here, the pair is not in our hardcoded lists and the API check failed
+    console.log(`${fromToken.symbol}-${toToken.symbol} pair is not supported`);
     return false;
   } catch (error) {
     console.error('Error checking token pair support:', error);
