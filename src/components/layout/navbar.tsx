@@ -1,13 +1,10 @@
 
 import WalletConnector from "@/components/walletconnector/WalletConnector";
 import NetworkToggle from "@/components/NetworkToggle";
-import { useTheme } from "next-themes";
 
 const Navbar = () => {
-  const { theme } = useTheme();
-  
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 h-24 backdrop-blur-md ${theme === 'dark' ? 'bg-unikron-navy/50' : 'bg-white/50'}`}>
+    <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 h-24 backdrop-blur-md bg-white/50">
       <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
         <div className="flex items-center">
           <img 
