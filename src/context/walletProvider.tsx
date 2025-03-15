@@ -59,7 +59,7 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
 
   const connect = async (wallet: WalletProvider) => {
     try {
-      // For non-Rain bow Kit wallets
+      // For non-Rainbow Kit wallets
       if (!wallet.isRainbowKit) {
         if (!window.ethereum) {
           toast.error(`${wallet.name} wallet not detected. Please install it first.`);
@@ -107,6 +107,7 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
         isConnected,
         selectedWallet,
         address,
+        walletAddress: address, // Add walletAddress as an alias to address
         connect,
         disconnect
       }}
