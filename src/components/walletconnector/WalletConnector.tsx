@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { WALLET_PROVIDERS, WalletProvider } from '@/config/wallets';
 import { useWallet } from '@/context/walletContext';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,36 @@ import {
 } from "@/components/ui/dialog";
 import NotConnected from './not_connected';
 import { WalletIcon } from './walletIcons';
+import { useNetwork } from '@/context/networkContext';
+import { NETWORKS } from '@/lib/constants';
 
 const WalletConnector = () => {
   const [open, setOpen] = useState(false);
   const { isConnected, selectedWallet, connect, disconnect, walletAddress } = useWallet();
+  const { selectedNetwork } = useNetwork();
+  const [filteredWallets, setFilteredWallets] = useState<WalletProvider[]>([]);
+  
+  // Update filtered wallets whenever the network changes
+  useEffect(() => {
+    if (selectedNetwork) {
+      // For Ethereum and Arbitrum networks, only show RainbowKit
+      if (['ethereum', 'arbitrum'].includes(selectedNetwork.id)) {
+        const rainbowKit = WALLET_PROVIDERS.find(w => w.isRainbowKit);
+        setFilteredWallets(rainbowKit ? [rainbowKit] : []);
+      } 
+      // For Cardano network, show Cardano-compatible wallets
+      else if (selectedNetwork.id === 'cardano') {
+        const cardanoWallets = WALLET_PROVIDERS.filter(w => w.isCardano);
+        setFilteredWallets(cardanoWallets);
+      }
+      // Default case, show all wallets
+      else {
+        setFilteredWallets(WALLET_PROVIDERS);
+      }
+    } else {
+      setFilteredWallets(WALLET_PROVIDERS);
+    }
+  }, [selectedNetwork]);
   
   // Function to format an address for display
   const formatAddress = (address: string) => {
@@ -43,17 +69,20 @@ const WalletConnector = () => {
     }
   };
 
-  // If RainbowKit is selected but not connected, show the RainbowKit connect button
-  if (selectedWallet?.isRainbowKit && !isConnected) {
-    return <ConnectButton />;
+  // For Ethereum and Arbitrum networks, directly use RainbowKit if already connected
+  if (selectedNetwork && ['ethereum', 'arbitrum'].includes(selectedNetwork.id)) {
+    // If connected with RainbowKit wallet
+    if (isConnected && selectedWallet?.isRainbowKit) {
+      return <ConnectButton showBalance={false} chainStatus="icon" accountStatus="address" />;
+    }
+    
+    // If not connected, return RainbowKit button
+    if (!isConnected) {
+      return <ConnectButton />;
+    }
   }
   
-  // Render the RainbowKit ConnectButton when RainbowKit is selected and connected
-  if (isConnected && selectedWallet?.isRainbowKit) {
-    return <ConnectButton showBalance={false} chainStatus="icon" accountStatus="address" />;
-  }
-  
-  // Otherwise render our custom dialog for wallet selection
+  // For all other scenarios, use our custom dialog
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -104,7 +133,7 @@ const WalletConnector = () => {
           </div>
         ) : (
           <NotConnected 
-            walletProviders={WALLET_PROVIDERS} 
+            walletProviders={filteredWallets} 
             onConnect={handleWalletConnect} 
           />
         )}
