@@ -9,13 +9,10 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
         <div className="flex items-center">
           <img 
-            src="/logos/ethereum.svg"
-            alt="UNIKRON Swap"
-            className="h-10 w-10 mr-3" 
+            src="/lovable-uploads/f7bf7061-1d66-4b9a-8b8a-c02479456db5.png"
+            alt="UNIKRON"
+            className="h-10" 
           />
-          <span className="text-xl font-semibold text-white">
-            UNIKRON Swap
-          </span>
         </div>
         
         <div className="flex items-center gap-4">
