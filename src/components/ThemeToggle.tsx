@@ -11,12 +11,12 @@ const ThemeToggle = () => {
       variant="outline"
       size="icon"
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      className="rounded-full bg-white/5 border-white/10 hover:bg-white/10"
+      className={`rounded-full ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10'}`}
     >
       {theme === "dark" ? (
-        <Moon className="h-4 w-4 text-white/80" />
+        <Sun className="h-4 w-4 text-white/80" />
       ) : (
-        <Sun className="h-4 w-4 text-black/80" />
+        <Moon className="h-4 w-4 text-black/80" />
       )}
       <span className="sr-only">Toggle theme</span>
     </Button>
