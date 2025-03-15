@@ -4,7 +4,7 @@ import NetworkToggle from "@/components/NetworkToggle";
 
 const Navbar = () => {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 h-24 backdrop-blur-md bg-white/50">
+    <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 h-24 backdrop-blur-md bg-unikron-navy-dark/70 border-b border-unikron-blue/10">
       <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
         <div className="flex items-center">
           <img 
