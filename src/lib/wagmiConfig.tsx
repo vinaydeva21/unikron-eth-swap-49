@@ -11,15 +11,15 @@ const { chains, publicClient } = configureChains(
   [mainnet, arbitrum],
   [
     // Use Alchemy as the primary provider when available, fallback to public provider
-    alchemyProvider({ apiKey: 'YourAlchemyApiKey' }),
+    alchemyProvider({ apiKey: process.env.ALCHEMY_API_KEY || 'YourAlchemyApiKey' }),
     publicProvider()
   ]
 );
 
-// Get the wallets from RainbowKit
+// Get the wallets from RainbowKit - use walletConnectProjectId for WalletConnect
 const { connectors } = getDefaultWallets({
   appName: 'UNIKRON Swap',
-  projectId: 'unikronswap', // This is a placeholder - in production, use a proper project ID
+  projectId: 'YOUR_PROJECT_ID', // Replace with your WalletConnect Cloud project ID
   chains
 });
 

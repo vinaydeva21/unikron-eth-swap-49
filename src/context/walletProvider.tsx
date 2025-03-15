@@ -1,25 +1,36 @@
-
 import { useState, useEffect } from 'react';
 import { WalletContext } from './walletContext';
 import { WalletProvider } from '@/config/wallets';
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
+import { useAccount } from 'wagmi';
 
 export const WalletContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<WalletProvider | null>(null);
   const [address, setAddress] = useState<string | null>(null);
   const [cardanoAPI, setCardanoAPI] = useState<any>(null);
+  
+  const { address: wagmiAddress, isConnected: isWagmiConnected } = useAccount();
 
   useEffect(() => {
-    // Check if we already have a wallet connection from localStorage
-    const savedWallet = localStorage.getItem('selectedWallet');
-    if (savedWallet) {
-      const wallet = JSON.parse(savedWallet);
-      reconnectWallet(wallet);
+    if (isWagmiConnected && wagmiAddress) {
+      const rainbowKitWallet = WALLET_PROVIDERS.find(w => w.isRainbowKit);
+      if (rainbowKitWallet && (!isConnected || !selectedWallet?.isRainbowKit)) {
+        setIsConnected(true);
+        setSelectedWallet(rainbowKitWallet);
+        setAddress(wagmiAddress);
+      }
     }
     
-    // Listen for account changes in Ethereum wallets
+    const savedWallet = localStorage.getItem('selectedWallet');
+    if (savedWallet && !isWagmiConnected) {
+      const wallet = JSON.parse(savedWallet);
+      if (!wallet.isRainbowKit) {
+        reconnectWallet(wallet);
+      }
+    }
+    
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       window.ethereum.on('chainChanged', () => window.location.reload());
@@ -30,14 +41,15 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
-  }, []);
+  }, [isWagmiConnected, wagmiAddress]);
   
+  const { WALLET_PROVIDERS } = require('@/config/wallets');
+
   const reconnectWallet = async (wallet: WalletProvider) => {
     try {
       if (wallet.isCardano) {
         await reconnectCardanoWallet(wallet);
       } else if (window.ethereum) {
-        // For Ethereum wallets
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts.length > 0) {
           setAddress(accounts[0]);
@@ -56,7 +68,6 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
         const api = await (window as any).cardano.nami.enable();
         const addresses = await api.getUsedAddresses();
         if (addresses && addresses.length > 0) {
-          // Convert the Cardano address bytes to string
           const addressHex = addresses[0];
           const addressStr = Buffer.from(addressHex, 'hex').toString();
           setAddress(addressStr);
@@ -83,36 +94,29 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
   
   const handleAccountsChanged = (accounts: string[]) => {
     if (accounts.length === 0) {
-      // User disconnected their wallet
       disconnect();
     } else {
-      // Account changed, update the address
       setAddress(accounts[0]);
     }
   };
 
   const connect = async (wallet: WalletProvider) => {
     try {
-      // For RainbowKit wallets
       if (wallet.isRainbowKit) {
-        // RainbowKit is handled by the RainbowKit UI
         setSelectedWallet(wallet);
         return;
       }
       
-      // For Cardano wallets
       if (wallet.isCardano) {
         await connectCardanoWallet(wallet);
         return;
       }
       
-      // For MetaMask and other EVM wallets
       if (!window.ethereum) {
         toast.error(`${wallet.name} wallet not detected. Please install it first.`);
         return;
       }
       
-      // Request account access for Ethereum wallets
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       
       if (accounts.length > 0) {
@@ -120,7 +124,6 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
         setIsConnected(true);
         setSelectedWallet(wallet);
         
-        // Save wallet selection to localStorage
         localStorage.setItem('selectedWallet', JSON.stringify(wallet));
         
         toast.success(`Connected to ${wallet.name}`);
@@ -144,7 +147,6 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
         if (api) {
           const addresses = await api.getUsedAddresses();
           if (addresses && addresses.length > 0) {
-            // Convert the Cardano address bytes to string
             const addressHex = addresses[0];
             const addressStr = Buffer.from(addressHex, 'hex').toString();
             
@@ -153,7 +155,6 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
             setSelectedWallet(wallet);
             setCardanoAPI(api);
             
-            // Save wallet selection to localStorage
             localStorage.setItem('selectedWallet', JSON.stringify(wallet));
             
             toast.success(`Connected to ${wallet.name}`);
@@ -170,7 +171,6 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
         if (api) {
           const addresses = await api.getUsedAddresses();
           if (addresses && addresses.length > 0) {
-            // Convert the Cardano address bytes to string
             const addressHex = addresses[0];
             const addressStr = Buffer.from(addressHex, 'hex').toString();
             
@@ -179,7 +179,6 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
             setSelectedWallet(wallet);
             setCardanoAPI(api);
             
-            // Save wallet selection to localStorage
             localStorage.setItem('selectedWallet', JSON.stringify(wallet));
             
             toast.success(`Connected to ${wallet.name}`);
@@ -198,7 +197,6 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
     setAddress(null);
     setCardanoAPI(null);
     
-    // Remove saved wallet from localStorage
     localStorage.removeItem('selectedWallet');
     
     toast.info('Wallet disconnected');
@@ -210,7 +208,7 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
         isConnected,
         selectedWallet,
         address,
-        walletAddress: address, // Add walletAddress as an alias to address
+        walletAddress: address,
         connect,
         disconnect
       }}

@@ -17,12 +17,6 @@ export const WALLET_PROVIDERS: WalletProvider[] = [
     isRainbowKit: true
   },
   {
-    id: 'metamask',
-    name: 'MetaMask',
-    icon: '/wallets/metamask.svg',
-    networks: ['ethereum', 'arbitrum']
-  },
-  {
     id: 'nami',
     name: 'Nami',
     icon: '/wallets/nami.svg',
