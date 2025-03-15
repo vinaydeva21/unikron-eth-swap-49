@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ArrowDownUp, Settings } from "lucide-react";
 import { NETWORKS, SLIPPAGE_OPTIONS } from "@/lib/constants";
@@ -7,6 +6,7 @@ import NetworkSelector from "@/components/NetworkSelector";
 import SwapInput from "@/components/swapcomp/swapInput";
 import SlippageComponent from "@/components/swapcomp/slippage_component";
 import { useWallet } from "@/context/walletContext";
+import { useNetwork } from "@/context/networkContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 const Swap = () => {
   const { isConnected, connect, selectedWallet } = useWallet();
+  const { isTestnet } = useNetwork();
   
   // State for network and tokens
   const [selectedNetwork, setSelectedNetwork] = useState(NETWORKS[0]);
@@ -36,7 +37,7 @@ const Swap = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [txStatus, setTxStatus] = useState<'pending' | 'success' | 'error' | null>(null);
   
-  // Load tokens when network changes
+  // Load tokens when network changes or testnet toggle changes
   useEffect(() => {
     const loadTokens = async () => {
       setIsLoadingTokens(true);
@@ -52,6 +53,8 @@ const Swap = () => {
           fromAmount: '',
           toAmount: '',
         }));
+        
+        toast.info(`Switched to ${isTestnet ? 'Sepolia testnet' : 'Ethereum mainnet'}`);
       } catch (error) {
         console.error("Error loading tokens:", error);
         toast.error("Failed to load tokens. Please try again later.");
@@ -61,7 +64,7 @@ const Swap = () => {
     };
     
     loadTokens();
-  }, [selectedNetwork]);
+  }, [selectedNetwork, isTestnet]);
   
   // Update calculated amount when parameters change
   useEffect(() => {
@@ -128,7 +131,7 @@ const Swap = () => {
         swapState.toToken,
         swapState.fromAmount,
         swapState.slippage,
-        false // isTestnet
+        isTestnet
       );
       
       // Note: We don't set success here as the transaction is monitored via the useEffect
@@ -161,14 +164,21 @@ const Swap = () => {
             onSelectNetwork={setSelectedNetwork} 
           />
           
-          <Button
-            variant="ghost"
-            size="icon"
-            className="settings-button"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            <Settings className="h-4 w-4 text-white/70" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {isTestnet && (
+              <span className="bg-yellow-500/20 text-yellow-300 text-xs px-2 py-1 rounded-full">
+                Sepolia
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="settings-button"
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              <Settings className="h-4 w-4 text-white/70" />
+            </Button>
+          </div>
         </div>
         
         {showSettings && (

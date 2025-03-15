@@ -49,15 +49,15 @@ export const NETWORKS: Network[] = [
 // Contract addresses
 export const CONTRACT_ADDRESSES = {
   ethereum: {
-    swap: "0x0000000000000000000000000000000000000000",
+    swap: "0x0000000000000000000000000000000000000000", // Replace with actual mainnet address
     router: "0x0000000000000000000000000000000000000000",
   },
   arbitrum: {
     swap: "0x0000000000000000000000000000000000000000",
     router: "0x0000000000000000000000000000000000000000",
   },
-  goerli: {
-    swap: "0x0000000000000000000000000000000000000000",
+  sepolia: {
+    swap: "0x0000000000000000000000000000000000000000", // Replace with your deployed contract address
     router: "0x0000000000000000000000000000000000000000",
   }
 };
@@ -83,6 +83,28 @@ export const DEFAULT_TOKENS = {
       decimals: 6,
       network: "ethereum",
       address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      price: 1
+    }
+  ],
+  sepolia: [
+    {
+      id: "eth-sepolia",
+      symbol: "ETH",
+      name: "Sepolia ETH",
+      icon: "/tokens/eth.svg",
+      decimals: 18,
+      network: "sepolia",
+      address: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", // Wrapped ETH on Sepolia
+      price: 3500
+    },
+    {
+      id: "usdt-sepolia",
+      symbol: "USDT",
+      name: "Test USDT",
+      icon: "/tokens/usdt.svg",
+      decimals: 6,
+      network: "sepolia",
+      address: "0x7169D38820dfd117C3FA1f22a697dBA58d90BA06", // Example USDT on Sepolia
       price: 1
     }
   ],

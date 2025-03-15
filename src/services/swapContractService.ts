@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
 import { Token } from '@/lib/types';
+import { CONTRACT_ADDRESSES } from '@/config';
 
 // ABI for our swap contract - simplified version
 const SWAP_CONTRACT_ABI = [
@@ -8,19 +9,6 @@ const SWAP_CONTRACT_ABI = [
   "function feePercent() view returns (uint256)",
   "event SwapCompleted(address indexed user, address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut)"
 ];
-
-// Contract addresses for different networks
-const CONTRACT_ADDRESSES: { [key: string]: string } = {
-  ethereum: "0x0000000000000000000000000000000000000000", // Replace with actual deployed address
-  arbitrum: "0x0000000000000000000000000000000000000000", // Replace with actual deployed address
-  // Cardano would need a different approach
-};
-
-// For testing, you can use Goerli testnet
-const TESTNET_ADDRESSES: { [key: string]: string } = {
-  ethereum: "0x0000000000000000000000000000000000000000", // Replace with testnet address
-  arbitrum: "0x0000000000000000000000000000000000000000", // Replace with testnet address
-};
 
 // Track active transactions
 interface TransactionState {
@@ -51,24 +39,48 @@ export const executeContractSwap = async (
     }
     
     // Get network ID
-    const networkId = fromToken.network;
-    if (!networkId || !['ethereum', 'arbitrum'].includes(networkId)) {
+    const networkId = isTestnet ? 'sepolia' : fromToken.network;
+    if (!networkId || !['ethereum', 'arbitrum', 'sepolia'].includes(networkId)) {
       toast.error(`Swaps not supported on ${networkId || 'unknown'} network`);
       return false;
     }
     
-    // Get contract address based on network and environment
-    const contractAddresses = isTestnet ? TESTNET_ADDRESSES : CONTRACT_ADDRESSES;
-    const contractAddress = contractAddresses[networkId];
+    // Get contract address based on network
+    const contractAddress = CONTRACT_ADDRESSES[networkId]?.swap;
     
     if (!contractAddress || contractAddress === "0x0000000000000000000000000000000000000000") {
-      toast.error(`Swap contract not deployed on ${networkId} ${isTestnet ? 'testnet' : 'mainnet'}`);
+      toast.error(`Swap contract not deployed on ${networkId}`);
       return false;
     }
     
     // Connect to provider
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
+    
+    // Check if we need to switch networks
+    const chainId = isTestnet ? 11155111 : fromToken.chainId; // Sepolia chainId
+    const currentChainId = await provider.getNetwork().then(net => net.chainId);
+    
+    // If we're on the wrong network, prompt switch
+    if (chainId && currentChainId !== chainId) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x' + chainId.toString(16) }],
+        });
+        
+        // Reload provider after network switch
+        return executeContractSwap(fromToken, toToken, amount, slippage, isTestnet);
+      } catch (switchError: any) {
+        // This error code indicates that the chain has not been added to MetaMask.
+        if (switchError.code === 4902) {
+          toast.error("Please add this network to your wallet first");
+        } else {
+          toast.error("Failed to switch networks");
+        }
+        return false;
+      }
+    }
     
     // Create contract instance
     const swapContract = new ethers.Contract(
@@ -146,11 +158,14 @@ export const executeContractSwap = async (
       amount
     };
     
-    // Show transaction hash as a toast - use proper toast format
+    // Get the network prefix for the explorer URL
+    const networkPrefix = isTestnet ? 'sepolia.' : '';
+    
+    // Show transaction hash as a toast
     toast.info(`Transaction sent! View on explorer: ${tx.hash.substring(0, 6)}...${tx.hash.substring(tx.hash.length - 4)}`, {
       action: {
         label: "View",
-        onClick: () => window.open(`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${tx.hash}`, '_blank')
+        onClick: () => window.open(`https://${networkPrefix}etherscan.io/tx/${tx.hash}`, '_blank')
       }
     });
     
@@ -178,7 +193,7 @@ export const executeContractSwap = async (
       toast.success(`Swapped ${amount} ${fromToken.symbol} for ${outputAmount} ${toToken.symbol}`, {
         action: {
           label: "View",
-          onClick: () => window.open(`https://${isTestnet ? 'goerli.' : ''}etherscan.io/tx/${receipt.transactionHash}`, '_blank')
+          onClick: () => window.open(`https://${networkPrefix}etherscan.io/tx/${receipt.transactionHash}`, '_blank')
         }
       });
       return true;
@@ -218,5 +233,5 @@ export const resetTransactionState = (): void => {
  * Check if swap is available for the current network
  */
 export const isSwapAvailable = (networkId: string): boolean => {
-  return ['ethereum', 'arbitrum'].includes(networkId);
+  return ['ethereum', 'arbitrum', 'sepolia'].includes(networkId);
 };
