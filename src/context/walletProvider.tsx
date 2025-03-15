@@ -13,7 +13,7 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
   const [cardanoAPI, setCardanoAPI] = useState<any>(null);
   
   const { address: wagmiAddress, isConnected: isWagmiConnected } = useAccount();
-  const { connect: wagmiConnect } = useConnect();
+  const { connect: wagmiConnect, connectAsync } = useConnect();
 
   useEffect(() => {
     if (isWagmiConnected && wagmiAddress) {
@@ -112,6 +112,7 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
       if (wallet.isRainbowKit) {
         setSelectedWallet(wallet);
         wagmiConnect();
+        toast.info(`Select a wallet from the RainbowKit options`);
         return;
       }
       

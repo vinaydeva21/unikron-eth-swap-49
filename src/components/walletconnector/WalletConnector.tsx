@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { WALLET_PROVIDERS, WalletProvider } from '@/config/wallets';
 import { useWallet } from '@/context/walletContext';
@@ -28,9 +29,9 @@ const WalletConnector = () => {
   const handleWalletConnect = async (wallet: WalletProvider) => {
     try {
       if (wallet.isRainbowKit) {
-        // Close the dialog first
+        // Close our dialog first
         setOpen(false);
-        // Connect using RainbowKit wallet
+        // Connect will trigger RainbowKit modal directly
         await connect(wallet);
         return;
       }
