@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { WalletContext } from './walletContext';
 import { WalletProvider } from '@/config/wallets';
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
 import { useAccount } from 'wagmi';
+import { WALLET_PROVIDERS } from '@/config/wallets';
 
 export const WalletContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -42,8 +44,6 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
       }
     };
   }, [isWagmiConnected, wagmiAddress]);
-  
-  const { WALLET_PROVIDERS } = require('@/config/wallets');
 
   const reconnectWallet = async (wallet: WalletProvider) => {
     try {
