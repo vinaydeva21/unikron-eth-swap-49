@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { WALLET_PROVIDERS, WalletProvider } from '@/config/wallets';
 import { useWallet } from '@/context/walletContext';
@@ -31,7 +30,7 @@ const WalletConnector = () => {
       if (wallet.isRainbowKit) {
         // Close the dialog first
         setOpen(false);
-        // Connect using RainbowKit wallet (this triggers RainbowKit's own UI)
+        // Connect using RainbowKit wallet
         await connect(wallet);
         return;
       }
@@ -43,21 +42,9 @@ const WalletConnector = () => {
     }
   };
 
-  // If RainbowKit is selected but not connected, show the custom button that will trigger RainbowKit UI
+  // If RainbowKit is selected but not connected, show the RainbowKit connect button
   if (selectedWallet?.isRainbowKit && !isConnected) {
-    return (
-      <ConnectButton.Custom>
-        {({ openConnectModal }) => (
-          <Button 
-            className="bg-unikron-blue hover:bg-unikron-blue-light text-white transition-all duration-300"
-            onClick={openConnectModal}
-          >
-            <Wallet className="mr-2 h-4 w-4" />
-            Connect Wallet
-          </Button>
-        )}
-      </ConnectButton.Custom>
-    );
+    return <ConnectButton />;
   }
   
   // Render the RainbowKit ConnectButton when RainbowKit is selected and connected

@@ -13,7 +13,7 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
   const [cardanoAPI, setCardanoAPI] = useState<any>(null);
   
   const { address: wagmiAddress, isConnected: isWagmiConnected } = useAccount();
-  const { openConnectModal } = useConnect();
+  const { connect: wagmiConnect } = useConnect();
 
   useEffect(() => {
     if (isWagmiConnected && wagmiAddress) {
@@ -111,13 +111,7 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
     try {
       if (wallet.isRainbowKit) {
         setSelectedWallet(wallet);
-        if (openConnectModal) {
-          openConnectModal();
-        } else {
-          console.error("RainbowKit connect modal not available");
-          toast.error("Unable to open wallet connection modal");
-        }
-        
+        wagmiConnect();
         return;
       }
       
