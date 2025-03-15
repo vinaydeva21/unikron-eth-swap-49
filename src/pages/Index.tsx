@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import Navbar from "@/components/layout/navbar";
 import Swap from "@/components/swapcomp/swap";
-import { WalletProvider } from "@/context/walletProvider";
+import { WalletContextProvider } from "@/context/walletProvider";
 
 const Index = () => {
   // Initialize the swap application
@@ -11,7 +11,7 @@ const Index = () => {
   }, []);
   
   return (
-    <WalletProvider>
+    <WalletContextProvider>
       <div className="min-h-screen bg-unikron-navy relative overflow-hidden">
         {/* Radial gradient background */}
         <div 
@@ -31,7 +31,7 @@ const Index = () => {
           </div>
         </main>
       </div>
-    </WalletProvider>
+    </WalletContextProvider>
   );
 };
 

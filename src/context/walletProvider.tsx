@@ -1,16 +1,16 @@
 
 import { useState, useEffect, ReactNode } from 'react';
 import WalletContext from './walletContext';
-import { WALLET_PROVIDERS, WalletProvider } from '@/config/wallets';
+import { WALLET_PROVIDERS, type WalletProvider as WalletProviderType } from '@/config/wallets';
 import { toast } from 'sonner';
 
 interface WalletProviderProps {
   children: ReactNode;
 }
 
-export const WalletProvider = ({ children }: WalletProviderProps) => {
+export const WalletContextProvider = ({ children }: WalletProviderProps) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState<WalletProvider | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<WalletProviderType | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
     checkPreviousConnection();
   }, []);
 
-  const connectWallet = async (wallet: WalletProvider): Promise<boolean> => {
+  const connectWallet = async (wallet: WalletProviderType): Promise<boolean> => {
     try {
       if (wallet.isRainbowKit) {
         // RainbowKit will handle connection on its own UI
