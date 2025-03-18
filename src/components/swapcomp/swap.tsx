@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { ArrowDownUp, Settings } from "lucide-react";
+import { ArrowDownUp } from "lucide-react";
 import { NETWORKS, SLIPPAGE_OPTIONS } from "@/lib/constants";
 import { Network, Token, SwapState, Transaction } from "@/types"; // Updated import path
 import NetworkSelector from "@/components/NetworkSelector";
@@ -11,7 +11,13 @@ import { useWallet } from "@/context/walletContext";
 import { useNetwork } from "@/context/networkContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
 import { fetchSymbiosisTokens } from "@/services/tokenService";
 import { swapTokens, calculateOutputAmount } from "@/lib/swap";
 import { toast } from "sonner";
@@ -36,9 +42,9 @@ const Swap = () => {
   // UI state
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [txStatus, setTxStatus] = useState<'pending' | 'success' | 'error' | null>(null);
   const [isPairSupported, setIsPairSupported] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
   
   // Transaction history state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -282,26 +288,35 @@ const Swap = () => {
                   Testnet
                 </span>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="settings-button"
-                onClick={() => setShowSettings(!showSettings)}
-              >
-                <Settings className="h-4 w-4 text-white/70" />
-              </Button>
+              
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-black/20 border-unikron-blue/20 text-white hover:bg-black/30"
+                  >
+                    {swapState.slippage}%
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px] bg-background border-unikron-blue/20">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Slippage Settings</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <SlippageComponent
+                      slippage={swapState.slippage}
+                      setSlippage={(value) => {
+                        setSwapState(prev => ({ ...prev, slippage: value }));
+                        setDialogOpen(false);
+                      }}
+                      slippageOptions={SLIPPAGE_OPTIONS}
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
-          
-          {showSettings && (
-            <div className="bg-black/10 rounded-xl p-4 mb-6">
-              <SlippageComponent
-                slippage={swapState.slippage}
-                setSlippage={(value) => setSwapState(prev => ({ ...prev, slippage: value }))}
-                slippageOptions={SLIPPAGE_OPTIONS}
-              />
-            </div>
-          )}
           
           <div className="space-y-2">
             <SwapInput
