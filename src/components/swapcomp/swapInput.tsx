@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { Token } from "@/lib/types";
 import TokenSelector from "@/components/swapcomp/tokens";
 import { Card } from "@/components/ui/card";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SwapInputProps {
   label: string;
@@ -26,6 +27,8 @@ const SwapInput = ({
   isLoading = false,
   isReadOnly = false,
 }: SwapInputProps) => {
+  const isMobile = useIsMobile();
+  
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     
@@ -50,9 +53,9 @@ const SwapInput = ({
 
   return (
     <div className="rounded-xl overflow-hidden bg-black/20 border border-white/5">
-      <div className="px-4 py-3 flex justify-between items-center">
-        <span className="text-sm text-white/60">{label}</span>
-        <div className="text-sm text-white/60">
+      <div className="px-3 sm:px-4 py-2 sm:py-3 flex justify-between items-center">
+        <span className="text-xs sm:text-sm text-white/60">{label}</span>
+        <div className="text-xs sm:text-sm text-white/60">
           {isLoading ? (
             <div className="flex items-center">
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -64,7 +67,7 @@ const SwapInput = ({
         </div>
       </div>
       
-      <div className="px-4 pb-3 flex justify-between items-center">
+      <div className="px-3 sm:px-4 pb-2 sm:pb-3 flex justify-between items-center">
         <input
           type="text"
           value={amount}

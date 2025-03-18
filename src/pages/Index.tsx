@@ -14,7 +14,7 @@ const Index = () => {
   return (
     <NetworkProvider>
       <WalletContextProvider>
-        <div className="min-h-screen bg-unikron-navy relative overflow-hidden">
+        <div className="min-h-screen bg-unikron-navy relative overflow-x-hidden">
           {/* Radial gradient background */}
           <div 
             className="absolute inset-0 bg-gradient-radial from-unikron-navy-light/20 to-transparent"
@@ -27,8 +27,8 @@ const Index = () => {
           <Navbar />
           
           {/* Main content */}
-          <main className="pt-28 pb-12 px-4 sm:px-6 flex flex-col items-center justify-center relative z-10">
-            <div className="max-w-md w-full mx-auto">
+          <main className="pt-20 sm:pt-28 pb-8 sm:pb-12 px-3 sm:px-6 flex flex-col items-center justify-center relative z-10">
+            <div className="w-full max-w-md mx-auto">
               <Swap />
             </div>
           </main>
