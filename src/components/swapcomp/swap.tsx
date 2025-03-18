@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { ArrowDownUp, Settings } from "lucide-react";
 import { NETWORKS, SLIPPAGE_OPTIONS } from "@/lib/constants";
-import { Network, Token, SwapState, Transaction } from "@/lib/types";
+import { Network, Token, SwapState, Transaction } from "@/types"; // Updated import path
 import NetworkSelector from "@/components/NetworkSelector";
 import SwapInput from "@/components/swapcomp/swapInput";
 import SlippageComponent from "@/components/swapcomp/slippage_component";

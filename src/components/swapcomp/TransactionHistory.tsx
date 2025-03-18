@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { ExternalLink } from "lucide-react";
-import { Transaction, TransactionStatus } from "@/lib/types";
+import { Transaction, TransactionStatus } from "@/types"; // Updated import path
 import { useWallet } from "@/context/walletContext";
 import { useNetwork } from "@/context/networkContext";
 import { getExplorerUrl } from "@/lib/utils";

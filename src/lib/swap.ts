@@ -1,6 +1,6 @@
 
 import { toast } from 'sonner';
-import { Token } from '@/lib/types';
+import { Token } from '@/types'; // Updated import path
 import { getSigner } from './ethereum';
 import { ethers } from 'ethers';
 import { 
