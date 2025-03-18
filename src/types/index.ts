@@ -48,7 +48,14 @@ export interface Transaction {
   status: TransactionStatus;
   timestamp: number;
   type: 'swap' | 'approve' | 'transfer' | 'other';
-  data?: any;
+  data?: {
+    fromToken?: string;
+    toToken?: string;
+    fromAmount?: string;
+    toAmount?: string;
+    chainId?: number;
+    [key: string]: any;
+  };
 }
 
 // User represents a user profile
