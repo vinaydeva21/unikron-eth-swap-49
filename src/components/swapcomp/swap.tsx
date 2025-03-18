@@ -375,7 +375,7 @@ const Swap = () => {
         </CardContent>
       </Card>
       
-      {isConnected && (
+      {transactions.length > 0 && isConnected && (
         <TransactionHistory transactions={transactions} />
       )}
     </div>
