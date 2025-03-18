@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ArrowDownUp } from "lucide-react";
 import { NETWORKS, SLIPPAGE_OPTIONS } from "@/lib/constants";
@@ -291,13 +290,16 @@ const Swap = () => {
               
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-black/20 border-unikron-blue/20 text-white hover:bg-black/30"
-                  >
-                    {swapState.slippage}%
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/70 text-sm">Slippage fee:</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-black/20 border-unikron-blue/20 text-white hover:bg-black/30"
+                    >
+                      {swapState.slippage}%
+                    </Button>
+                  </div>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px] bg-background border-unikron-blue/20">
                   <DialogHeader>
